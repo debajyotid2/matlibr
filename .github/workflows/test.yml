@@ -9,7 +9,7 @@ jobs:
       - run: |
           echo "Setting up dependencies ..."
           cd scripts
-          source setup_dependencies $(nproc) || exit 1
+          source setup_dependencies.sh $(nproc) || exit 1
       - run: |
           echo "Building library ..."
           cd scripts
