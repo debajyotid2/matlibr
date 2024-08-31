@@ -4,8 +4,8 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    uses: actions/checkout@v4
     steps:
+      - uses: actions/checkout@v4
       - run: |
           echo "Setting up dependencies ..."
           cd scripts
