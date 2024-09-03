@@ -100,7 +100,7 @@ Since `matlibr` has OpenBLAS as a dependency, it is required that OpenBLAS also 
 Assuming that you have followed the above steps and installed OpenBLAS and `matlibr` to your system, you can simply link the static libraries and includes at compile time.
 
 ```
-g++ -I<PATH TO OPENBLAS INCLUDE DIR> -I<PATH TO MATLIBR INCLUDE DIR> -L<PATH TO OPENBLAS LIBRARY) -L(PATH TO MATLIBR LIBRARY> foo.c -o foo -lmatlibr -lopenblas
+g++ -I<PATH TO OPENBLAS INCLUDE DIR> -I<PATH TO MATLIBR INCLUDE DIR> -L<PATH TO OPENBLAS LIBRARY> -L<PATH TO MATLIBR LIBRARY> foo.c -o foo -lmatlibr -lopenblas
 ```
 
 ## License
