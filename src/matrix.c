@@ -135,6 +135,54 @@ MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned in
     return out;                                                                                     \
 }
 
+// Repeat a vector along a given dimension
+#define DEFINE_MATRIX_REPEAT(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC, DESTROY_FUNC, COPY_FUNC)   \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *vec, unsigned int dimension, unsigned int repeats) {                 \
+    MATRIX_TYPE repeated;                                                                               \
+    unsigned int nidx, idx_fac, inc;                                                                    \
+    bool err = false;                                                                                   \
+    /* Check if vec is a vector */                                                                      \
+    if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
+        perror("ERROR: Only a one dimensional vector can be repeated.");                                \
+        DESTROY_FUNC(&repeated);                                                                        \
+        return repeated;                                                                                \
+    }                                                                                                   \
+    switch (dimension) {                                                                                \
+    case 0:                                                                                             \
+        if (vec->nrows != 1) {                                                                          \
+            perror("ERROR: Can only repeat a row vector along rows.");                                  \
+            err = true;                                                                                 \
+        }                                                                                               \
+        nidx = vec->ncols;                                                                              \
+        idx_fac = vec->ncols;                                                                           \
+        inc = 1;                                                                                        \
+        repeated = CREATE_FUNC(repeats, vec->ncols);                                                    \
+        break;                                                                                          \
+    case 1:                                                                                             \
+        if (vec->ncols != 1) {                                                                          \
+            perror("ERROR: Can only repeat a column vector along rows.");                               \
+            err = true;                                                                                 \
+        }                                                                                               \
+        nidx = vec->nrows;                                                                              \
+        idx_fac = 1;                                                                                    \
+        inc = repeats;                                                                                  \
+        repeated = CREATE_FUNC(vec->nrows, repeats);                                                    \
+        break;                                                                                          \
+    default:                                                                                            \
+        perror("ERROR: Dimension must be either 0 or 1.\n");                                            \
+        err = true;                                                                                     \
+        break;                                                                                          \
+    }                                                                                                   \
+    if (err) {                                                                                          \
+        DESTROY_FUNC(&repeated);                                                                        \
+        return repeated;                                                                                \
+    }                                                                                                   \
+    for (size_t i = 0; i < repeats; i++) {                                                              \
+        COPY_FUNC(nidx, vec->data, 1, &(repeated.data[idx_fac * i]), inc);                              \
+    }                                                                                                   \
+    return repeated;                                                                                    \
+}
+
 // Destroy a matrix
 #define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
 void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
@@ -152,6 +200,7 @@ DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
 DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy, mat_destroy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, mat_destroy, cblas_dcopy)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
@@ -319,6 +368,7 @@ DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
 DEFINE_MATRIX_COPY_INPLACE(intmat_copy_inplace, IntMatrix, icopy, intmat_destroy)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
+DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, intmat_destroy, icopy)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
@@ -482,56 +532,7 @@ void intmat_mul_inplace(IntMatrix *intmat_a, bool transpose_a,
           ldb, beta, result->data, n);
 }
 
-// Repeat a vector along a given dimension
-IntMatrix intmat_repeat(IntMatrix *vec, unsigned int dimension,
-                        unsigned int repeats) {
-    IntMatrix repeated;
-    unsigned int nidx, idx_fac, inc;
-    bool err = false;
 
-    // Check if vec is a vector
-    if (vec->nrows > 1 && vec->ncols > 1) {
-        perror("ERROR: Only a one dimensional vector can be repeated.");
-        intmat_destroy(&repeated);
-        return repeated;
-    }
-
-    switch (dimension) {
-    case 0:
-        if (vec->nrows != 1) {
-            perror("ERROR: Can only repeat a row vector along rows.");
-            err = true;
-        }
-        nidx = vec->ncols;
-        idx_fac = vec->ncols;
-        inc = 1;
-        repeated = intmat_create(repeats, vec->ncols);
-        break;
-    case 1:
-        if (vec->ncols != 1) {
-            perror("ERROR: Can only repeat a column vector along rows.");
-            err = true;
-        }
-        nidx = vec->nrows;
-        idx_fac = 1;
-        inc = repeats;
-        repeated = intmat_create(vec->nrows, repeats);
-        break;
-    default:
-        perror("ERROR: Dimension must be either 0 or 1.\n");
-        err = true;
-        break;
-    }
-    if (err) {
-        intmat_destroy(&repeated);
-        return repeated;
-    }
-
-    for (size_t i = 0; i < repeats; i++)
-        icopy(nidx, vec->data, 1, &(repeated.data[idx_fac * i]), inc);
-
-    return repeated;
-}
 
 // Add a vector to a matrix
 // Addition is done as: A := A + B
@@ -794,56 +795,6 @@ void mat_sub(Matrix *mat_a, Matrix *mat_b) {
     mat_scale(&copy, -1.0);
     mat_add(mat_a, &copy);
     mat_destroy(&copy);
-}
-
-// Repeat a vector along a given dimension
-Matrix mat_repeat(Matrix *vec, unsigned int dimension, unsigned int repeats) {
-    Matrix repeated;
-    unsigned int nidx, idx_fac, inc;
-    bool err = false;
-
-    // Check if vec is a vector
-    if (vec->nrows > 1 && vec->ncols > 1) {
-        perror("ERROR: Only a one dimensional vector can be repeated.");
-        mat_destroy(&repeated);
-        return repeated;
-    }
-
-    switch (dimension) {
-    case 0:
-        if (vec->nrows != 1) {
-            perror("ERROR: Can only repeat a row vector along rows.");
-            err = true;
-        }
-        nidx = vec->ncols;
-        idx_fac = vec->ncols;
-        inc = 1;
-        repeated = mat_create(repeats, vec->ncols);
-        break;
-    case 1:
-        if (vec->ncols != 1) {
-            perror("ERROR: Can only repeat a column vector along rows.");
-            err = true;
-        }
-        nidx = vec->nrows;
-        idx_fac = 1;
-        inc = repeats;
-        repeated = mat_create(vec->nrows, repeats);
-        break;
-    default:
-        perror("ERROR: Dimension must be either 0 or 1.\n");
-        err = true;
-        break;
-    }
-    if (err) {
-        mat_destroy(&repeated);
-        return repeated;
-    }
-
-    for (size_t i = 0; i < repeats; i++)
-        cblas_dcopy(nidx, vec->data, 1, &(repeated.data[idx_fac * i]), inc);
-
-    return repeated;
 }
 
 // Add a vector to a matrix
