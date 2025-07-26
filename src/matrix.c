@@ -183,6 +183,49 @@ MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *vec, unsigned int dimension, unsigned int rep
     return repeated;                                                                                    \
 }
 
+// Add a scalar to a matrix
+#define DEFINE_MATRIX_ADD_SCALAR(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                     \
+void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE scalar) {                                                    \
+    if (mat == NULL) {                                                                                  \
+        return;                                                                                         \
+    }                                                                                                   \
+    if (scalar == 0) {                                                                                  \
+        return;                                                                                         \
+    }                                                                                                   \
+    int nelem = mat->nrows * mat->ncols;                                                                \
+    for (int i=0; i<nelem; ++i) {                                                                       \
+        mat->data[i] += scalar;                                                                         \
+    }                                                                                                   \
+}
+
+// Add two matrices
+// Addition is performed as A := A+B
+#define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, ADD_FUNC, DESTROY_FUNC)                               \
+void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+    /* Ensure that both matrices are of same shape */                                                   \
+    if (mat_a->nrows != mat_b->nrows ||                                                                 \
+        mat_a->ncols != mat_b->ncols) {                                                                 \
+        perror("ERROR: matrices A and B must be of same dimension.");                                   \
+        DESTROY_FUNC(mat_a);                                                                            \
+        return;                                                                                         \
+    }                                                                                                   \
+    ADD_FUNC(mat_b->nrows * mat_b->ncols, 1, mat_b->data, 1, mat_a->data, 1);                           \
+}
+
+// Subtract two matrices
+// Subtraction is performed as A := A - B
+#define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, ADD_FUNC, DESTROY_FUNC)                               \
+void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+    /* Ensure that both matrices are of same shape */                                                   \
+    if (mat_a->nrows != mat_b->nrows ||                                                                 \
+        mat_a->ncols != mat_b->ncols) {                                                                 \
+        perror("ERROR: matrices A and B must be of same dimension.");                                   \
+        DESTROY_FUNC(mat_a);                                                                            \
+        return;                                                                                         \
+    }                                                                                                   \
+    ADD_FUNC(mat_b->nrows * mat_b->ncols, -1, mat_b->data, 1, mat_a->data, 1);                          \
+}
+
 // Destroy a matrix
 #define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
 void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
@@ -203,6 +246,9 @@ DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, mat_destroy, cblas_dcopy)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
+DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
+DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy, mat_destroy)
+DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy, mat_destroy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 /************************************************************/
@@ -371,8 +417,10 @@ DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, intmat_destroy, icopy)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
+DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
+DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy, intmat_destroy)
+DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy, intmat_destroy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
-
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
@@ -419,38 +467,6 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
         for (size_t j = 0; j < mat->ncols; j++)
             mat->data[i * mat->ncols + j] = temp_ints[i * mat->ncols + j];
     free(temp_ints);
-}
-
-// Add two matrices
-// Addition is performed as A := A+B
-void intmat_add(IntMatrix *intmat_a, IntMatrix *intmat_b) {
-    // Ensure that both vectors are of same length
-    if (intmat_a->nrows != intmat_b->nrows ||
-        intmat_a->ncols != intmat_b->ncols) {
-        perror("ERROR: matrices A and B must be of same dimension.");
-        intmat_destroy(intmat_a);
-        return;
-    }
-
-    iaxpy(intmat_b->nrows * intmat_b->ncols, 1, intmat_b->data, 1,
-          intmat_a->data, 1);
-}
-
-// Subtract two matrices
-// Subtraction is performed as A := A - B
-void intmat_sub(IntMatrix *intmat_a, IntMatrix *intmat_b) {
-    IntMatrix copy = intmat_copy(intmat_b);
-    intmat_scale(&copy, -1);
-    intmat_add(intmat_a, &copy);
-    intmat_destroy(&copy);
-}
-
-// Add a scalar to a matrix
-void intmat_add_scalar(IntMatrix *mat, int scalar) {
-    IntMatrix temp = intmat_create(mat->nrows, mat->ncols);
-    intmat_fill(&temp, scalar);
-    intmat_add(mat, &temp);
-    intmat_destroy(&temp);
 }
 
 // Multiply two matrices A and B. Matrices are multiplied
@@ -531,8 +547,6 @@ void intmat_mul_inplace(IntMatrix *intmat_a, bool transpose_a,
     igemm(trans_a, trans_b, m, n, k, alpha, intmat_a->data, lda, intmat_b->data,
           ldb, beta, result->data, n);
 }
-
-
 
 // Add a vector to a matrix
 // Addition is done as: A := A + B
@@ -690,14 +704,6 @@ double mat_norm(Matrix *mat) {
 }
 
 
-// Add a scalar to a matrix
-void mat_add_scalar(Matrix *mat, double scalar) {
-    Matrix temp = mat_create(mat->nrows, mat->ncols);
-    mat_fill(&temp, scalar);
-    mat_add(mat, &temp);
-    mat_destroy(&temp);
-}
-
 // Multiply two matrices A and B. Matrices are multiplied
 // after transforming them. Matrix dimensions must be such that
 //     dim(transform(A)) = m x k
@@ -772,29 +778,6 @@ void mat_mul_inplace(Matrix *mat_a, bool transpose_a, Matrix *mat_b,
 
     cblas_dgemm(CblasRowMajor, trans_a, trans_b, m, n, k, 1.0, mat_a->data, lda,
                 mat_b->data, ldb, 0.0, result->data, n);
-}
-
-// Add two matrices
-// Addition is performed as A := A+B
-void mat_add(Matrix *mat_a, Matrix *mat_b) {
-    // Ensure that both vectors are of same length
-    if (mat_a->nrows != mat_b->nrows || mat_a->ncols != mat_b->ncols) {
-        perror("ERROR: matrices A and B must be of same dimension.");
-        mat_destroy(mat_a);
-        return;
-    }
-
-    cblas_daxpy(mat_b->nrows * mat_b->ncols, 1.0, mat_b->data, 1, mat_a->data,
-                1);
-}
-
-// Subtract two matrices
-// Subtraction is performed as A := A - B
-void mat_sub(Matrix *mat_a, Matrix *mat_b) {
-    Matrix copy = mat_copy(mat_b);
-    mat_scale(&copy, -1.0);
-    mat_add(mat_a, &copy);
-    mat_destroy(&copy);
 }
 
 // Add a vector to a matrix
