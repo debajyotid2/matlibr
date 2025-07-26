@@ -711,47 +711,53 @@ void mat_fill_random(Matrix* mat, unsigned int seed)
 }
 
 // Fill a matrix with random numbers from a Gaussian distribution 
-// with mean "mean" and standard deviation "std"
+// with mean "mean" and standard deviation "std", using the Box-Muller
+// transform (https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform)
 void mat_fill_random_gaussian(Matrix* mat,
                               Matrix* means,
                               Matrix* stds,
-                              unsigned int seed)
-{
-    double x;
-
+                              unsigned int seed) {
     srand(seed);
 
-    if (mat==NULL || means==NULL || stds==NULL)
-    {
+    if (mat==NULL || means==NULL || stds==NULL) {
         perror("ERROR: Null values in argument matrices.");
         return;
     }
 
     if (means->nrows!=mat->ncols || stds->nrows!=mat->ncols 
-            || means->ncols!=1 || stds->ncols!=1)
-    {
+            || means->ncols!=1 || stds->ncols!=1) {
         perror("ERROR: Means/Stddevs matrix is of improper dimensions.");
         mat_destroy(mat);
         return;
     }
 
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-        {
+    const double two_pi = 2.0 * M_PI;
+    double u_1, u_2, mag;
+
+    for (size_t i=0; i<mat->nrows; i++) {
+        for (size_t j=0; j<mat->ncols; j++) {
             double mean = means->data[j];
             double std = stds->data[j];
 
-            if (std==0.0)
-            {
+            if (std==0.0) {
                 perror("ERROR: Standard deviation cannot be zero.");
                 mat_destroy(mat);
                 return;
             }
+            
+            // Use Box-Muller transform to generate the random number 
+            // from a standard normal distribution
+            do {
+                u_1 = (double)rand()/(double)(RAND_MAX);
+            } while(u_1 == 0.0);
 
-            x = (double)rand()/(double)(RAND_MAX);
-            mat->data[i*mat->ncols+j] = exp(-0.5*((x-mean)/std)*((x-mean)/std))\
-                                        / (std * sqrt(2*M_PI));
+            u_2 = (double)rand()/(double)(RAND_MAX);
+
+            mag = std * sqrt(-2.0 * log(u_1));
+
+            mat->data[i*mat->ncols+j] = rand()%2 ? mag * cos(two_pi * u_2) + mean: mag * sin(two_pi * u_2) + mean;
         }
+    }
 }
 
 // Copy a matrix
