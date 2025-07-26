@@ -25,19 +25,34 @@
 #include "matrix.h"
 
 // clang-format off
-#define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE) \
-void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {           \
-    if (mat==NULL || mat->data==NULL) {                       \
-        return;                                               \
-    }                                                         \
-    size_t total_elements = mat->nrows * mat->ncols;          \
-    for (size_t i=0; i<total_elements; ++i) {                 \
-        mat->data[i] = value;                                 \
-    }                                                         \
+#define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)           \
+void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                     \
+    if (mat==NULL || mat->data==NULL) {                                 \
+        return;                                                         \
+    }                                                                   \
+    size_t total_elements = mat->nrows * mat->ncols;                    \
+    for (size_t i=0; i<total_elements; ++i) {                           \
+        mat->data[i] = value;                                           \
+    }                                                                   \
+}
+
+#define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)   \
+void FUNC_NAME(const MATRIX_TYPE* mat) {                                \
+    if (mat == NULL || mat->data == NULL)                               \
+        return;                                                         \
+    size_t total_elements = mat->nrows*mat->ncols;                      \
+    for (size_t i = 0; i < total_elements; i++) {                       \
+        printf(FORMAT_SPECIFIER " ", mat->data[i]);                     \
+        if (i%mat->ncols == 0) {                                        \
+            printf("\n");                                               \
+        }                                                               \
+    }                                                                   \       
 }
 
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 
 /************************************************************/
 /*******Basic C implementations of BLAS functions************/
@@ -212,20 +227,6 @@ IntMatrix intmat_create(int nrows, int ncols) {
     matrix.data = (int *)calloc(matrix.nrows * matrix.ncols, sizeof(int));
 
     return matrix;
-}
-
-// Print a matrix
-void intmat_print(const IntMatrix *mat) {
-    if (mat == NULL)
-        return;
-    if (mat->data == NULL)
-        return;
-
-    for (size_t i = 0; i < mat->nrows; i++) {
-        for (size_t j = 0; j < mat->ncols; j++)
-            printf("%d ", mat->data[i * mat->ncols + j]);
-        printf("\n");
-    }
 }
 
 // Fill a matrix with random integers between low and high (exclusive)
@@ -601,20 +602,6 @@ Matrix mat_create(int nrows, int ncols) {
     matrix.data = (double *)calloc(matrix.nrows * matrix.ncols, sizeof(double));
 
     return matrix;
-}
-
-// Print a matrix
-void mat_print(const Matrix *mat) {
-    if (mat == NULL)
-        return;
-    if (mat->data == NULL)
-        return;
-
-    for (size_t i = 0; i < mat->nrows; i++) {
-        for (size_t j = 0; j < mat->ncols; j++)
-            printf("%.4f ", mat->data[i * mat->ncols + j]);
-        printf("\n");
-    }
 }
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
