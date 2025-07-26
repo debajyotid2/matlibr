@@ -40,6 +40,26 @@ MATRIX_TYPE FUNC_NAME(int nrows, int ncols) {                                   
     return matrix;                                                                      \
 }
 
+// Copy a matrix
+#define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)              \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat) {                                               \
+    MATRIX_TYPE copy = CREATE_FUNC(mat->nrows, mat->ncols);                             \
+    COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy.data, 1);                     \
+    return copy;                                                                        \
+}                                                                                       \
+
+// Copy a matrix inplace
+#define DEFINE_MATRIX_COPY_INPLACE(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, DESTROY_FUNC)     \
+void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                                   \
+    /* Check dimensions */                                                              \
+    if (mat->nrows != copy->nrows || mat->ncols != copy->ncols) {                       \
+        perror("ERROR: copy and original matrix must have same dimensions.");           \
+        DESTROY_FUNC(mat);                                                              \
+        return;                                                                         \
+    }                                                                                   \
+    COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                    \
+}
+
 // Fill a matrix with a single value
 #define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)           \
 void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                     \
@@ -121,12 +141,9 @@ void FUNC_NAME(MATRIX_TYPE *matrix) {                   \
     matrix->data = NULL;                                \
 }
 
-DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
-DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
-DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
-DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
-DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
+DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
+DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy, mat_destroy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
@@ -290,6 +307,15 @@ void dusga(const unsigned int num_elem, const double *y,
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
 
+DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
+DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
+DEFINE_MATRIX_COPY_INPLACE(intmat_copy_inplace, IntMatrix, icopy, intmat_destroy)
+DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
+DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
+DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
+
+
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
 void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
@@ -335,24 +361,6 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
         for (size_t j = 0; j < mat->ncols; j++)
             mat->data[i * mat->ncols + j] = temp_ints[i * mat->ncols + j];
     free(temp_ints);
-}
-
-// Copy a matrix
-IntMatrix intmat_copy(IntMatrix *mat) {
-    IntMatrix copy = intmat_create(mat->nrows, mat->ncols);
-    icopy(mat->nrows * mat->ncols, mat->data, 1, copy.data, 1);
-    return copy;
-}
-
-// Copy a matrix inplace
-void intmat_copy_inplace(IntMatrix *mat, IntMatrix *copy) {
-    // Check dimensions
-    if (mat->nrows != copy->nrows || mat->ncols != copy->ncols) {
-        perror("ERROR: copy and original matrix must have same dimensions.");
-        intmat_destroy(mat);
-        return;
-    }
-    icopy(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);
 }
 
 
@@ -656,24 +664,6 @@ void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
                            : mag * sin(two_pi * u_2) + mean;
         }
     }
-}
-
-// Copy a matrix
-Matrix mat_copy(Matrix *mat) {
-    Matrix copy = mat_create(mat->nrows, mat->ncols);
-    cblas_dcopy(mat->nrows * mat->ncols, mat->data, 1, copy.data, 1);
-    return copy;
-}
-
-// Copy a matrix inplace
-void mat_copy_inplace(Matrix *mat, Matrix *copy) {
-    // Check dimensions
-    if (mat->nrows != copy->nrows || mat->ncols != copy->ncols) {
-        perror("ERROR: copy and original matrix must have same dimensions.");
-        mat_destroy(mat);
-        return;
-    }
-    cblas_dcopy(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);
 }
 
 // Sum of absolute values of matrix elements
