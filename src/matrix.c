@@ -91,8 +91,8 @@ void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
     int* a_trans = NULL;
     int* b_trans = NULL;
     unsigned int min_lda, min_ldb, min_ldc;
-    bool a_transpose_p = transa==CblasTrans;
-    bool b_transpose_p = transb==CblasTrans;
+    bool a_is_transposed = (transa==CblasTrans);
+    bool b_is_transposed = (transb==CblasTrans);
 
     // Validation
     if (a==NULL || b==NULL || c==NULL)
@@ -103,101 +103,61 @@ void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
     if ((transa==CblasConjTrans || transa==CblasConjNoTrans) ||
         (transb==CblasConjTrans || transb==CblasConjNoTrans))
     {
-        perror("ERROR! Conjugate matrices not supported.");
+        perror("ERROR! Conjugate transpose is not supported for integer GEMM.");
         return;
     }
-    if (a_transpose_p)
+    if (a_is_transposed) {
         min_lda = m > 1? m: 1;
-    else
+    } else {
         min_lda = k > 1? k: 1;
-    if (lda!=min_lda)
-    {
-        perror("ERROR! Invalid LDA.");
+    }
+    if (lda!=min_lda) {
+        perror("ERROR! Invalid LDA (leading dimension of A).");
         return;
     }
-    if (b_transpose_p)
+    if (b_is_transposed) {
         min_ldb = k > 1? k: 1;
-    else
+    } else {
         min_ldb = n > 1? n: 1;
-    if (ldb!=min_ldb)
-    {
-        perror("ERROR! Invalid LDB.");
+    }
+    if (ldb!=min_ldb) {
+        perror("ERROR! Invalid LDB (leading dimension of B).");
         return;
     }
     min_ldc = n > 1? n: 1;
-    if (ldc!=min_ldc)
-    {
-        perror("ERROR! Invalid LDC.");
+    if (ldc!=min_ldc) {
+        perror("ERROR! Invalid LDC (leading dimension of C).");
         return;
     }
 
     // Quick return
-    if (alpha==0 && beta==1)
+    if (m == 0 || n == 0 || ((alpha==0 || k==0) && beta==1)) {
         return;
-    if (alpha==0)
-    {
-        for (size_t i=0; i<ldc*m; i++)
-            c[i] *= beta;
-        return;
-    }
-
-    // Transpositions
-    if (a_transpose_p)
-    {
-        a_trans = (int *)calloc(m*k, sizeof(int));
-        for (size_t i=0; i<m; i++)
-            for (size_t j=0; j<k; j++)
-                a_trans[i*k+j] = a[j*lda+i];
-    }
-    if (b_transpose_p)
-    {
-        b_trans = (int *)calloc(n*k, sizeof(int));
-        for (size_t i=0; i<k; i++)
-            for (size_t j=0; j<n; j++)
-                b_trans[i*n+j] = b[j*ldb+i];
     }
     
-    // Matrix multiply
-    if (a_transpose_p && !b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a_trans[i*k+l] * b[l*ldb+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else if (!a_transpose_p && b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a[i*lda+l] * b_trans[l*n+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else if (a_transpose_p && b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a_trans[i*k+l] * b_trans[l*n+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                {
-                    c[i*ldc+j] += alpha * a[i*lda+l] * b[l*ldb+j] +\
-                                            beta * c[i*ldc+j];
-                }
+    // Scale C by beta
+    for (size_t i=0; i<m; ++i) {
+        for (size_t j=0; j<n; ++j) {
+            c[i*ldc+j] *= beta;
+        }
     }
 
-    // Free transposed matrices
-    if (a_transpose_p)
-        free(a_trans);
-    if (b_transpose_p)
-        free(b_trans);
+    if (alpha==0 || k==0) {
+        return;
+    }
+
+    // Do C += alpha * op(A) * op(B)
+    for (size_t i=0; i<m; ++i) {
+        for (size_t j=0; j<n; ++j) {
+            int dot_prod = 0;
+            for (size_t l=0; l<k; ++l) {
+                int a_val = a_is_transposed? a[l*lda + i]: a[i*lda+l];
+                int b_val = b_is_transposed? b[j*ldb + l]: b[l*ldb+j];
+                dot_prod += a_val * b_val;
+            }
+            c[i*ldc+j] += alpha*dot_prod;
+        }
+    }
 }
 
 // Sparse BLAS-like function for gathering elements from a
