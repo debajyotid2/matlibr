@@ -46,13 +46,58 @@ void FUNC_NAME(const MATRIX_TYPE* mat) {                                \
         if (i%mat->ncols == 0) {                                        \
             printf("\n");                                               \
         }                                                               \
-    }                                                                   \       
+    }                                                                   \
+}
+
+// Create a row (1)/column (0) vector (according to specified
+// dimension) with elements from "low" to "high"
+// (excluded) in "step" steps.
+#define DEFINE_MATRIX_RANGE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC, DESTROY_FUNC)           \
+MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned int dimension) {      \
+    MATRIX_TYPE out;                                                                                \
+    bool err = false;                                                                               \
+    unsigned int n_elem;                                                                            \
+    out.data = NULL;                                                                                \
+    if (high <= low) {                                                                              \
+        perror("Upper limit cannot be <= lower limit.");                                            \
+        err = true;                                                                                 \
+    }                                                                                               \
+    if (step <= 0) {                                                                                \
+        perror("Step cannot be zero or negative.");                                                 \
+        err = true;                                                                                 \
+    }                                                                                               \
+    n_elem = (int)((high - low) / step);                                                            \
+    if (n_elem==0) {                                                                                \
+        return out;     /* Return immediately if no elements can be created. */                     \
+    }                                                                                               \
+    switch (dimension) {                                                                            \
+    case 0:                                                                                         \
+        out = CREATE_FUNC(n_elem, 1);                                                               \
+        break;                                                                                      \
+    case 1:                                                                                         \
+        out = CREATE_FUNC(1, n_elem);                                                               \
+        break;                                                                                      \
+    default:                                                                                        \
+        perror("Dimension must be either 0 or 1.");                                                 \
+        err = true;                                                                                 \
+        break;                                                                                      \
+    }                                                                                               \
+    if (err) {                                                                                      \
+        DESTROY_FUNC(&out);                                                                         \
+        return out;                                                                                 \
+    }                                                                                               \
+    for (int i = 0; i < n_elem; ++i) {                                                              \
+        out.data[i] = low + i * step;                                                               \
+    }                                                                                               \
+    return out;                                                                                     \
 }
 
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
+DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
 
 /************************************************************/
 /*******Basic C implementations of BLAS functions************/
@@ -294,49 +339,6 @@ void intmat_copy_inplace(IntMatrix *mat, IntMatrix *copy) {
     icopy(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);
 }
 
-// Create a row (1)/column (0) vector (according to specified
-// dimension) with elements from "low" to "high"
-// (excluded) in "step" steps.
-IntMatrix intmat_range(int low, int high, unsigned int step,
-                       unsigned int dimension) {
-    IntMatrix out;
-    bool err = false;
-    unsigned int n_elem;
-
-    if (high <= low) {
-        perror("Upper limit cannot be <= lower limit.");
-        err = true;
-    }
-    if (step == 0) {
-        perror("Step cannot be zero.");
-        err = true;
-    }
-
-    n_elem = (high - low) / step;
-
-    switch (dimension) {
-    case 0:
-        out = intmat_create(n_elem, 1);
-        break;
-    case 1:
-        out = intmat_create(1, n_elem);
-        break;
-    default:
-        perror("Dimension must be either 0 or 1.");
-        err = true;
-        break;
-    }
-
-    if (err) {
-        intmat_destroy(&out);
-        return out;
-    }
-
-    for (int i = low; i < high; i += step)
-        out.data[(i - low) / step] = i;
-
-    return out;
-}
 
 // Scale a matrix by a scalar
 void intmat_scale(IntMatrix *mat, int fac) {
@@ -701,48 +703,6 @@ double mat_norm(Matrix *mat) {
     return cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
 }
 
-// Create a row (1)/column (0) vector (according to specified
-// dimension) with elements from "low" to "high"
-// (excluded) in "step" steps.
-Matrix mat_range(double low, double high, double step, unsigned int dimension) {
-    Matrix out;
-    bool err = false;
-    unsigned int n_elem;
-
-    if (high <= low) {
-        perror("Upper limit cannot be <= lower limit.");
-        err = true;
-    }
-    if (step <= 0) {
-        perror("Step cannot be zero or negative.");
-        err = true;
-    }
-
-    n_elem = (int)((high - low) / step);
-
-    switch (dimension) {
-    case 0:
-        out = mat_create(n_elem, 1);
-        break;
-    case 1:
-        out = mat_create(1, n_elem);
-        break;
-    default:
-        perror("Dimension must be either 0 or 1.");
-        err = true;
-        break;
-    }
-
-    if (err) {
-        mat_destroy(&out);
-        return out;
-    }
-
-    for (int i = low; i < high; i += step)
-        out.data[(int)((i - low) / step)] = (double)i;
-
-    return out;
-}
 
 // Scale a matrix by a scalar
 void mat_scale(Matrix *mat, double fac) {

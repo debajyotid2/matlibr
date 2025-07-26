@@ -39,7 +39,7 @@ typedef struct
 IntMatrix intmat_create(int nrow, int ncol);
 IntMatrix intmat_copy(IntMatrix* mat);
 void intmat_copy_inplace(IntMatrix* mat, IntMatrix* copy);
-IntMatrix intmat_range(int low, int high, unsigned int step,
+IntMatrix intmat_range(int low, int high, int step,
                         unsigned int dimension);
 void intmat_print(const IntMatrix* matrix);
 void intmat_fill(IntMatrix* matrix, int value);
