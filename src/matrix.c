@@ -109,14 +109,28 @@ MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned in
     return out;                                                                                     \
 }
 
+// Destroy a matrix
+#define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)   \
+void FUNC_NAME(MATRIX_TYPE *matrix) {                   \
+    if (matrix == NULL) {                               \
+        return;                                         \
+    }                                                   \
+    if ((matrix->data) != NULL) {                       \
+        free(matrix->data);                             \
+    }                                                   \
+    matrix->data = NULL;                                \
+}
+
 DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
+DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
+DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 /************************************************************/
 /*******Basic C implementations of BLAS functions************/
@@ -578,15 +592,6 @@ void intmat_gather(IntMatrix *from, IntMatrix *to, IntMatrix *indices,
     intmat_destroy(&idxs_repeated);
 }
 
-// Destroy a matrix
-void intmat_destroy(IntMatrix *matrix) {
-    if (matrix == NULL)
-        return;
-    if ((matrix->data) != NULL)
-        free(matrix->data);
-    matrix->data = NULL;
-}
-
 /************************************************************************/
 /***************Functions for Matrix (double precision data)*************/
 /************************************************************************/
@@ -922,13 +927,4 @@ void mat_gather(Matrix *from, Matrix *to, IntMatrix *indices,
     intmat_destroy(&ind_arg_cpy);
     intmat_destroy(&idxs);
     intmat_destroy(&idxs_repeated);
-}
-
-// Destroy a matrix
-void mat_destroy(Matrix *matrix) {
-    if (matrix == NULL)
-        return;
-    if ((matrix->data) != NULL)
-        free(matrix->data);
-    matrix->data = NULL;
 }
