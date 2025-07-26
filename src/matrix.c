@@ -25,6 +25,22 @@
 #include "matrix.h"
 
 // clang-format off
+// Create a matrix
+#define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                         \
+MATRIX_TYPE FUNC_NAME(int nrows, int ncols) {                                           \
+    MATRIX_TYPE matrix;                                                                 \
+    if (nrows <= 0 || ncols <= 0) {                                                     \
+        perror("ERROR: Number of rows/columns cannot be <= 0.");                        \
+        matrix.data = NULL;                                                             \
+        return matrix;                                                                  \
+    }                                                                                   \
+    matrix.nrows = (unsigned int)nrows;                                                 \
+    matrix.ncols = (unsigned int)ncols;                                                 \
+    matrix.data = (DATA_TYPE *)calloc(matrix.nrows * matrix.ncols, sizeof(DATA_TYPE));  \
+    return matrix;                                                                      \
+}
+
+// Fill a matrix with a single value
 #define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)           \
 void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                     \
     if (mat==NULL || mat->data==NULL) {                                 \
@@ -36,6 +52,7 @@ void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                     \
     }                                                                   \
 }
 
+// Print a matrix
 #define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)   \
 void FUNC_NAME(const MATRIX_TYPE* mat) {                                \
     if (mat == NULL || mat->data == NULL)                               \
@@ -92,9 +109,11 @@ MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned in
     return out;                                                                                     \
 }
 
+DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
+DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
@@ -256,23 +275,6 @@ void dusga(const unsigned int num_elem, const double *y,
 /************************************************************************/
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
-
-// Create a matrix
-IntMatrix intmat_create(int nrows, int ncols) {
-    IntMatrix matrix;
-    matrix.nrows = (unsigned int)nrows;
-    matrix.ncols = (unsigned int)ncols;
-
-    if (nrows <= 0 || ncols <= 0) {
-        perror("ERROR: Number of rows/columns cannot be <= 0.");
-        matrix.data = NULL;
-        return matrix;
-    }
-
-    matrix.data = (int *)calloc(matrix.nrows * matrix.ncols, sizeof(int));
-
-    return matrix;
-}
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
@@ -590,21 +592,7 @@ void intmat_destroy(IntMatrix *matrix) {
 /************************************************************************/
 
 // Create a matrix
-Matrix mat_create(int nrows, int ncols) {
-    Matrix matrix;
-    matrix.nrows = (unsigned int)nrows;
-    matrix.ncols = (unsigned int)ncols;
 
-    if (nrows <= 0 || ncols <= 0) {
-        perror("ERROR: Number of rows/columns cannot be <= 0.");
-        matrix.data = NULL;
-        return matrix;
-    }
-
-    matrix.data = (double *)calloc(matrix.nrows * matrix.ncols, sizeof(double));
-
-    return matrix;
-}
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 void mat_fill_random(Matrix *mat, unsigned int seed) {
