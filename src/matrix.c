@@ -61,29 +61,35 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                           
 }
 
 // Fill a matrix with a single value
-#define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)           \
-void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                     \
-    if (mat==NULL || mat->data==NULL) {                                 \
-        return;                                                         \
-    }                                                                   \
-    size_t total_elements = mat->nrows * mat->ncols;                    \
-    for (size_t i=0; i<total_elements; ++i) {                           \
-        mat->data[i] = value;                                           \
-    }                                                                   \
+#define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                           \
+void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                                     \
+    if (mat==NULL || mat->data==NULL) {                                                 \
+        return;                                                                         \
+    }                                                                                   \
+    size_t total_elements = mat->nrows * mat->ncols;                                    \
+    for (size_t i=0; i<total_elements; ++i) {                                           \
+        mat->data[i] = value;                                                           \
+    }                                                                                   \
+}
+
+// Scale a matrix by a scalar
+#define DEFINE_MATRIX_SCALE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, SCALING_FUNC)            \
+void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE fac) {                                       \
+    SCALING_FUNC(mat->nrows * mat->ncols, fac, mat->data, 1);                           \
 }
 
 // Print a matrix
-#define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)   \
-void FUNC_NAME(const MATRIX_TYPE* mat) {                                \
-    if (mat == NULL || mat->data == NULL)                               \
-        return;                                                         \
-    size_t total_elements = mat->nrows*mat->ncols;                      \
-    for (size_t i = 0; i < total_elements; i++) {                       \
-        printf(FORMAT_SPECIFIER " ", mat->data[i]);                     \
-        if (i%mat->ncols == 0) {                                        \
-            printf("\n");                                               \
-        }                                                               \
-    }                                                                   \
+#define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)                   \
+void FUNC_NAME(const MATRIX_TYPE* mat) {                                                \
+    if (mat == NULL || mat->data == NULL)                                               \
+        return;                                                                         \
+    size_t total_elements = mat->nrows*mat->ncols;                                      \
+    for (size_t i = 0; i < total_elements; i++) {                                       \
+        printf(FORMAT_SPECIFIER " ", mat->data[i]);                                     \
+        if (i%mat->ncols == 0) {                                                        \
+            printf("\n");                                                               \
+        }                                                                               \
+    }                                                                                   \
 }
 
 // Create a row (1)/column (0) vector (according to specified
@@ -130,21 +136,22 @@ MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned in
 }
 
 // Destroy a matrix
-#define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)   \
-void FUNC_NAME(MATRIX_TYPE *matrix) {                   \
-    if (matrix == NULL) {                               \
-        return;                                         \
-    }                                                   \
-    if ((matrix->data) != NULL) {                       \
-        free(matrix->data);                             \
-    }                                                   \
-    matrix->data = NULL;                                \
+#define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
+void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
+    if (matrix == NULL) {                                                                           \
+        return;                                                                                     \
+    }                                                                                               \
+    if ((matrix->data) != NULL) {                                                                   \
+        free(matrix->data);                                                                         \
+    }                                                                                               \
+    matrix->data = NULL;                                                                            \
 }
 
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
 DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy, mat_destroy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create, mat_destroy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
@@ -311,6 +318,7 @@ DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
 DEFINE_MATRIX_COPY_INPLACE(intmat_copy_inplace, IntMatrix, icopy, intmat_destroy)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create, intmat_destroy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
@@ -361,12 +369,6 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
         for (size_t j = 0; j < mat->ncols; j++)
             mat->data[i * mat->ncols + j] = temp_ints[i * mat->ncols + j];
     free(temp_ints);
-}
-
-
-// Scale a matrix by a scalar
-void intmat_scale(IntMatrix *mat, int fac) {
-    iscal(mat->nrows * mat->ncols, fac, mat->data, 1);
 }
 
 // Add two matrices
@@ -686,11 +688,6 @@ double mat_norm(Matrix *mat) {
     return cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
 }
 
-
-// Scale a matrix by a scalar
-void mat_scale(Matrix *mat, double fac) {
-    cblas_dscal(mat->nrows * mat->ncols, fac, mat->data, 1);
-}
 
 // Add a scalar to a matrix
 void mat_add_scalar(Matrix *mat, double scalar) {
