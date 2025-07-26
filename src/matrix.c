@@ -293,6 +293,35 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                            
     }                                                                                                   \
 }
 
+// Gather rows/columns from "from" and store in
+// "to" according to specified indices.
+#define DEFINE_MATRIX_GATHER(FUNC_NAME, MATRIX_TYPE, INT_MATRIX_TYPE, COPY_FUNC)                        \
+void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *indices,                \
+                unsigned int dimension) {                                                               \
+    if (from==NULL || to==NULL || indices==NULL) {                                                      \
+        perror("ERROR: Got null pointer for matrices or indices.");                                     \
+        return;                                                                                         \
+    }                                                                                                   \
+    switch (dimension) {                                                                                \
+    case 0:  /* Gather rows */                                                                          \
+        for (size_t i=0; i<indices->nrows; ++i) {                                                       \
+            COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
+                      &to->data[i*to->ncols], 1);                                                       \
+        }                                                                                               \
+        break;                                                                                          \
+    case 1: /* Gather columns */                                                                        \
+        for (size_t i=0; i<indices->ncols; ++i) {                                                       \
+            for (size_t j=0; j<from->nrows; ++j) {                                                      \
+                to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
+            }                                                                                           \
+        }                                                                                               \
+        break;                                                                                          \
+    default:                                                                                            \
+        perror("Dimension must be either rows(0) or columns(1).");                                      \
+        break;                                                                                          \
+    }                                                                                                   \
+}
+
 // Destroy a matrix
 #define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
 void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
@@ -318,6 +347,7 @@ DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 /************************************************************/
@@ -457,8 +487,9 @@ void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
         perror("ERROR! Null pointer in array argument(s).");
         return;
     }
-    for (size_t i = 0; i < num_elem; i++)
+    for (size_t i = 0; i < num_elem; i++) {
         x[i] = y[idxs[i * incy]];
+    }
 }
 
 // Sparse BLAS-like function for gathering elements from a
@@ -470,8 +501,9 @@ void dusga(const unsigned int num_elem, const double *y,
         perror("ERROR! Null pointer in array argument(s).");
         return;
     }
-    for (size_t i = 0; i < num_elem; i++)
+    for (size_t i = 0; i < num_elem; i++) {
         x[i] = y[idxs[i * incy]];
+    }
 }
 
 /************************************************************************/
@@ -491,6 +523,7 @@ DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
 // Fill a matrix with random integers between low and high (exclusive)
@@ -617,37 +650,6 @@ void intmat_mul_inplace(IntMatrix *intmat_a, bool transpose_a,
 
     igemm(trans_a, trans_b, m, n, k, alpha, intmat_a->data, lda, intmat_b->data,
           ldb, beta, result->data, n);
-}
-
-// Gather rows/columns from "from" and store in
-// "to" according to specified indices.
-void intmat_gather(IntMatrix *from, IntMatrix *to, IntMatrix *indices,
-                   unsigned int dimension) {
-    IntMatrix idxs, idxs_repeated, ind_arg_cpy;
-    switch (dimension) {
-    case 0:
-        idxs = intmat_range(0, from->ncols, 1, 1);
-        idxs_repeated = intmat_repeat(&idxs, 0, indices->nrows);
-        ind_arg_cpy = intmat_copy(indices);
-        intmat_scale(&ind_arg_cpy, from->ncols);
-        intmat_vec_add(&idxs_repeated, &ind_arg_cpy);
-        break;
-    case 1:
-        idxs = intmat_range(0, from->nrows, 1, 0);
-        intmat_scale(&idxs, from->ncols);
-        idxs_repeated = intmat_repeat(&idxs, 1, indices->ncols);
-        intmat_vec_add(&idxs_repeated, indices);
-        break;
-    default:
-        perror("Dimension must be either rows(0) or columns(1).");
-        intmat_destroy(to);
-        return;
-    }
-    iusga(idxs_repeated.nrows * idxs_repeated.ncols, from->data, 1, to->data,
-          (unsigned int *)idxs_repeated.data);
-    intmat_destroy(&ind_arg_cpy);
-    intmat_destroy(&idxs);
-    intmat_destroy(&idxs_repeated);
 }
 
 /************************************************************************/
@@ -813,34 +815,4 @@ void mat_mul_inplace(Matrix *mat_a, bool transpose_a, Matrix *mat_b,
                 mat_b->data, ldb, 0.0, result->data, n);
 }
 
-// Gather rows/columns from "from" and store in
-// "to" according to specified indices.
-void mat_gather(Matrix *from, Matrix *to, IntMatrix *indices,
-                unsigned int dimension) {
-    IntMatrix idxs, idxs_repeated, ind_arg_cpy;
-    switch (dimension) {
-    case 0:
-        idxs = intmat_range(0, from->ncols, 1, 1);
-        idxs_repeated = intmat_repeat(&idxs, 0, indices->nrows);
-        ind_arg_cpy = intmat_copy(indices);
-        intmat_scale(&ind_arg_cpy, from->ncols);
-        intmat_vec_add(&idxs_repeated, &ind_arg_cpy);
-        break;
-    case 1:
-        idxs = intmat_range(0, from->nrows, 1, 0);
-        intmat_scale(&idxs, from->ncols);
-        idxs_repeated = intmat_repeat(&idxs, 1, indices->ncols);
-        intmat_vec_add(&idxs_repeated, indices);
-        break;
-    default:
-        perror("Dimension must be either rows(0) or columns(1).");
-        mat_destroy(to);
-        return;
-    }
-    dusga(idxs_repeated.nrows * idxs_repeated.ncols, from->data, 1, to->data,
-          (const unsigned int *)idxs_repeated.data);
 
-    intmat_destroy(&ind_arg_cpy);
-    intmat_destroy(&idxs);
-    intmat_destroy(&idxs_repeated);
-}
