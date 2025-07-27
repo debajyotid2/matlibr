@@ -504,7 +504,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
     } else {
         min_lda = k > 1 ? k : 1;
     }
-    if (lda != min_lda) {
+    if (lda < min_lda) {
         perror("ERROR! Invalid LDA (leading dimension of A).");
         return;
     }
@@ -513,12 +513,12 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
     } else {
         min_ldb = n > 1 ? n : 1;
     }
-    if (ldb != min_ldb) {
+    if (ldb < min_ldb) {
         perror("ERROR! Invalid LDB (leading dimension of B).");
         return;
     }
     min_ldc = n > 1 ? n : 1;
-    if (ldc != min_ldc) {
+    if (ldc < min_ldc) {
         perror("ERROR! Invalid LDC (leading dimension of C).");
         return;
     }
@@ -531,7 +531,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
     // Scale C by beta
     for (size_t i = 0; i < m; ++i) {
         for (size_t j = 0; j < n; ++j) {
-            c[i * ldc + j] *= beta;
+            c[i * ldc + j] = (beta == 0) ? 0: c[i * ldc + j] * beta;
         }
     }
 
