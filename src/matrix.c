@@ -345,64 +345,71 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // after transforming them. Matrix dimensions must be such that
 //     dim(transform(A)) = m x k
 //     dim(transform(B)) = k' x n
-#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)               \
-void FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,                                                     \
-               const MATRIX_TYPE *mat_b, bool transpose_b,                                                     \
-               MATRIX_TYPE *result) {                                                                    \
-    unsigned int m, n, k, k_prime;                                                                       \
-    unsigned int lda, ldb;                                                                               \
-    DATA_TYPE alpha = 1, beta = 0;                                                                       \
-    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;                                   \
-    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;                                   \
-    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
-    k = transpose_a ? mat_a->nrows : mat_a->ncols;                                                       \
-    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;                                                 \
-    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
-    /* Ensure correct dimensions for matrix multiplication */                                            \
-    if (k != k_prime) {                                                                                  \
-        perror(                                                                                          \
-            "ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m "                         \
-            "x k and k' x n matrices.");                                                                 \
-        return;                                                                                          \
-    }                                                                                                    \
-    if (result->nrows != m || result->ncols != n) {                                                      \
-        perror("ERROR: Incorrect dimensions of result matrix.");                                         \
-        return;                                                                                          \
-    }                                                                                                    \
-    FILL_FUNC(result, (DATA_TYPE)0);                                                                     \
-    lda = transpose_a ? m : k;                                                                           \
-    ldb = transpose_b ? k : n;                                                                           \
-    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, lda, mat_b->data,                           \
-          ldb, beta, result->data, n);                                                                   \
+#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)                      \
+MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,                                  \
+                           const MATRIX_TYPE *mat_b, bool transpose_b,                                  \
+                           MATRIX_TYPE *result) {                                                       \
+    if (mat_a==NULL || mat_b==NULL || result==NULL) {                                                   \
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer.");                                         \
+        return MATRIX_ERR_NULL_PTR;                                                                     \
+    }                                                                                                   \
+    unsigned int m, n, k, k_prime;                                                                      \
+    unsigned int lda, ldb;                                                                              \
+    DATA_TYPE alpha = 1, beta = 0;                                                                      \
+    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;                                  \
+    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;                                  \
+    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                      \
+    k = transpose_a ? mat_a->nrows : mat_a->ncols;                                                      \
+    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;                                                \
+    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                      \
+    /* Ensure correct dimensions for matrix multiplication */                                           \
+    if (k != k_prime) {                                                                                 \
+        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                     \
+            "IntMatrix dimensions must satisfy k = k' for multiplying m "                               \
+            "x k and k' x n matrices.");                                                                \
+        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
+    }                                                                                                   \
+    if (result->nrows != m || result->ncols != n) {                                                     \
+        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Incorrect dimensions of result matrix.");          \
+        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
+    }                                                                                                   \
+    FILL_FUNC(result, (DATA_TYPE)0);                                                                    \
+    lda = transpose_a ? m : k;                                                                          \
+    ldb = transpose_b ? k : n;                                                                          \
+    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, lda, mat_b->data,                          \
+          ldb, beta, result->data, n);                                                                  \
+    return MATRIX_SUCCESS;                                                                              \
 }
 
 // Gather rows/columns from "from" and store in
 // "to" according to specified indices.
 #define DEFINE_MATRIX_GATHER(FUNC_NAME, MATRIX_TYPE, INT_MATRIX_TYPE, COPY_FUNC)                        \
-void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *indices,                \
-                unsigned int dimension) {                                                               \
+MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *indices,    \
+                           unsigned int dimension) {                                                    \
     if (from==NULL || to==NULL || indices==NULL) {                                                      \
-        perror("ERROR: Got null pointer for matrices or indices.");                                     \
-        return;                                                                                         \
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrices or indices.");                 \
+        return MATRIX_ERR_NULL_PTR;                                                                     \
     }                                                                                                   \
     if (indices->ncols != 1) {                                                                          \
-        perror("ERROR: 'indices' must be a row vector.");                                               \
-        return;                                                                                         \
+        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "'indices' must be a row vector.");                  \
+        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
     }                                                                                                   \
     switch (dimension) {                                                                                \
     case 0:  /* Gather rows */                                                                          \
         if (to->ncols != from->ncols) {                                                                 \
-            perror("ERROR: 'to' and 'from' matrices must have same number of columns.");                \
-            return;                                                                                     \
+            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+                         "'to' and 'from' matrices must have same number of columns.");                 \
+            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         if (to->nrows != indices->nrows) {                                                              \
-            perror("ERROR: 'to' must have the same number of rows as number of indices in 'indices'."); \
-            return;                                                                                     \
+            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+                         "'to' must have the same number of rows as number of indices in 'indices'.");  \
+            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
             if (indices->data[i] >= from->nrows) {                                                      \
-                perror("ERROR: Row index out of bounds.");                                              \
-                return;                                                                                 \
+                HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");               \
+                return MATRIX_ERR_INDEX_OUT_OF_BOUNDS;                                                  \
             }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
                       &to->data[i*to->ncols], 1);                                                       \
@@ -410,17 +417,19 @@ void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *
         break;                                                                                          \
     case 1: /* Gather columns */                                                                        \
         if (to->nrows != from->nrows) {                                                                 \
-            perror("ERROR: 'to' and 'from' matrices must have same number of rows.");                   \
-            return;                                                                                     \
+            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+                         "'to' and 'from' matrices must have same number of rows.");                    \
+            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         if (to->ncols != indices->nrows) {                                                              \
-            perror("ERROR: 'to' must have the same number of columns as number of indices in 'indices'.");  \
-            return;                                                                                         \
-        }                                                                                                   \
+            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+                     "'to' must have the same number of columns as number of indices in 'indices'.");   \
+            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
+        }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
             if (indices->data[i] >= from->ncols) {                                                      \
-                perror("ERROR: Column index out of bounds.");                                           \
-                return;                                                                                 \
+                HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");            \
+                return MATRIX_ERR_INDEX_OUT_OF_BOUNDS;                                                  \
             }                                                                                           \
             for (size_t j=0; j<from->nrows; ++j) {                                                      \
                 to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
@@ -428,9 +437,10 @@ void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *
         }                                                                                               \
         break;                                                                                          \
     default:                                                                                            \
-        perror("Dimension must be either rows(0) or columns(1).");                                      \
-        break;                                                                                          \
+        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either rows(0) or columns(1).");  \
+        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
     }                                                                                                   \
+    return MATRIX_SUCCESS;                                                                              \
 }
 
 // Destroy a matrix
