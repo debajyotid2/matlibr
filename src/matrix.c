@@ -371,7 +371,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrices or indices.");              \
     }                                                                                                   \
     if (indices->ncols != 1) {                                                                          \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "'indices' must be a row vector.");               \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "'indices' must be a column vector.");            \
     }                                                                                                   \
     switch (dimension) {                                                                                \
     case 0:  /* Gather rows */                                                                          \
@@ -400,17 +400,18 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                      "'to' must have the same number of columns as number of indices in 'indices'.");   \
         }                                                                                               \
-        for (size_t i=0; i<indices->nrows; ++i) {                                                       \
+        for (size_t i=0; i<to->nrows; ++i) {                                                            \
             if (indices->data[i] >= from->ncols) {                                                      \
                 RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
             }                                                                                           \
-            for (size_t j=0; j<from->nrows; ++j) {                                                      \
-                to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
+            for (size_t j=0; j<to->ncols; ++j) {                                                        \
+                to->data[i*to->ncols+j] = from->data[i*from->ncols+indices->data[j]];                   \
             }                                                                                           \
         }                                                                                               \
         break;                                                                                          \
     default:                                                                                            \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either rows(0) or columns(1).");\
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION,                                                   \
+                        "Dimension must be either rows(0) or columns(1).");                             \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
 }
