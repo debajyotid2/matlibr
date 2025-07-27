@@ -15,27 +15,33 @@
   limitations under the License.                                           
 */
 
-#include <bits/pthreadtypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "matrix.h"
 
 int main() {
     size_t seed = 42;
+    srand(seed);
+
     int nrow = 10, ncol = 5;
-    Matrix a = mat_create(nrow, ncol);
-    mat_fill_random(&a, seed);
-    Matrix b = mat_copy(&a);
+    Matrix a;
+    mat_create(&a, nrow, ncol);
+    mat_fill_random(&a);
+    Matrix b;
+    mat_copy(&b, &a);
     mat_scale(&b, 2.34);
     
     printf("\n************Matrix multiplication***************\n");
     printf("A: \n");
     mat_print(&a);
-    printf("B: \n");
+    printf("\nB: \n");
     mat_print(&b);
-    printf("A . B^T = \n");
+    printf("\nA . B^T = \n");
     
     // multiplication
-    Matrix prod = mat_mul(&a, false, &b, true);
+    Matrix prod;
+    mat_create(&prod, nrow, nrow);
+    mat_mul(&a, false, &b, true, &prod);
     mat_print(&prod);
     printf("\n******************************************\n");
 

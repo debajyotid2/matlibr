@@ -25,6 +25,32 @@
 
 #include "matrix.h"
 
+#ifdef _WIN32
+#include <limits.h>
+#endif
+
+// Generate a random integer between 0 and upper_bound
+unsigned int rand_int(unsigned int upper_bound) {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return number % upper_bound;
+#else
+    return arc4random_uniform(upper_bound);
+#endif
+}
+
+// Generate a random double precision number between 0.0 and 1.0
+double rand_double() {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return (double)number / ((double)UINT_MAX + 1);
+#else
+    return drand48();
+#endif
+}
+
 // Function for displaying and handling errors
 static void error_handler(const char *function, int line,
                           MatrixStatusCode status_code, const char *msg) {
@@ -107,12 +133,11 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE* mat) {                            
     if (mat==NULL || mat->data==NULL) {                                                         \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
-    size_t total_elements = mat->nrows*mat->ncols;                                              \
-    for (size_t i = 0; i < total_elements; i++) {                                               \
-        printf(FORMAT_SPECIFIER " ", mat->data[i]);                                             \
-        if (i%mat->ncols == 0) {                                                                \
-            printf("\n");                                                                       \
+    for (size_t i = 0; i < mat->nrows; i++) {                                                   \
+        for (size_t j = 0; j < mat->ncols; j++) {                                               \
+            printf(FORMAT_SPECIFIER " ", mat->data[i*mat->ncols+j]);                            \
         }                                                                                       \
+        printf("\n");                                                                           \
     }                                                                                           \
     return MATRIX_SUCCESS;                                                                      \
 }
@@ -617,7 +642,7 @@ DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
-DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
+DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
@@ -641,7 +666,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
     if (replace) {
         for (size_t i = 0; i < mat->nrows; i++) {
             for (size_t j = 0; j < mat->ncols; j++) {
-                mat->data[i * mat->ncols + j] = low + rand() % (high - low);
+                mat->data[i * mat->ncols + j] = low + rand_int(high-low);
             }
         }
         return MATRIX_SUCCESS;
@@ -665,7 +690,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
         temp_ints[i - low] = i;
     }
     for (size_t i = high - low - 1; i > 0; i--) {
-        int idx = rand() % i;
+        int idx = rand_int(i);
         int temp = temp_ints[idx];
         temp_ints[idx] = temp_ints[i];
         temp_ints[i] = temp;
@@ -688,7 +713,7 @@ DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
-DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%6.06f")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
@@ -708,7 +733,7 @@ MatrixStatusCode mat_fill_random(Matrix *mat) {
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
-            mat->data[i * mat->ncols + j] = (double)rand() / (double)(RAND_MAX);
+            mat->data[i * mat->ncols + j] = rand_double();
         }
     }
     return MATRIX_SUCCESS;
@@ -742,15 +767,15 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
             // Use Box-Muller transform to generate the random number
             // from a standard normal distribution
             do {
-                u_1 = (double)rand() / (double)(RAND_MAX);
+                u_1 = rand_double();
             } while (u_1 == 0.0);
 
-            u_2 = (double)rand() / (double)(RAND_MAX);
+            u_2 = rand_double();
 
             mag = std * sqrt(-2.0 * log(u_1));
 
             mat->data[i * mat->ncols + j] =
-                rand() % 2 ? mag * cos(two_pi * u_2) + mean
+                rand_int(2) ? mag * cos(two_pi * u_2) + mean
                            : mag * sin(two_pi * u_2) + mean;
         }
     }
