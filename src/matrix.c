@@ -574,24 +574,6 @@ DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, intmat_create, intmat_mul_inplace)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
-DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
-DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
-DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy)
-DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
-DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
-DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
-DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
-DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
-DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
-DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
-DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_MUL_INPLACE(mat_mul_inplace, Matrix, double, double_gemm_wrapper, mat_fill)
-DEFINE_MATRIX_MUL(mat_mul, Matrix, mat_create, mat_mul_inplace)
-DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
-DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
-
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
 void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
@@ -642,6 +624,25 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
 /************************************************************************/
 /***************Functions for Matrix (double precision data)*************/
 /************************************************************************/
+
+DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
+DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
+DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy)
+DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
+DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
+DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_MUL_INPLACE(mat_mul_inplace, Matrix, double, double_gemm_wrapper, mat_fill)
+DEFINE_MATRIX_MUL(mat_mul, Matrix, mat_create, mat_mul_inplace)
+DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
+DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
+
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 void mat_fill_random(Matrix *mat, unsigned int seed) {
