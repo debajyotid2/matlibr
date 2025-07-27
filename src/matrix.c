@@ -134,7 +134,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)(((high) - (low)) / (step));                                                      \
+    n_elem = (int)floor(((high) - (low)) / (step));                                                 \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -337,7 +337,6 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer.");                                      \
     }                                                                                                   \
     unsigned int m, n, k, k_prime;                                                                      \
-    unsigned int lda, ldb;                                                                              \
     DATA_TYPE alpha = 1, beta = 0;                                                                      \
     CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;                                  \
     CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;                                  \
@@ -355,10 +354,8 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Incorrect dimensions of result matrix.");       \
     }                                                                                                   \
     FILL_FUNC(result, (DATA_TYPE)0);                                                                    \
-    lda = transpose_a ? m : k;                                                                          \
-    ldb = transpose_b ? k : n;                                                                          \
-    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, lda, mat_b->data,                          \
-          ldb, beta, result->data, n);                                                                  \
+    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, mat_a->ncols, mat_b->data,                 \
+              mat_b->ncols, beta, result->data, n);                                                     \
     return MATRIX_SUCCESS;                                                                              \
 }
 
