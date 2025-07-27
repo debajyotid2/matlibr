@@ -85,8 +85,8 @@ MatrixStatusCode mat_scale(Matrix *mat, const double fac);
 MatrixStatusCode mat_abs_sum(Matrix *mat);
 MatrixStatusCode mat_norm(Matrix *mat);
 MatrixStatusCode mat_add_scalar(Matrix *mat, const double scalar);
-MatrixStatusCode mmat_add(Matrix *mat_a, const Matrix *mat_b);
-MatrixStatusCode mmat_sub(Matrix *mat_a, const Matrix *mat_b);
+MatrixStatusCode mat_add(Matrix *mat_a, const Matrix *mat_b);
+MatrixStatusCode mat_sub(Matrix *mat_a, const Matrix *mat_b);
 MatrixStatusCode mat_mul(const Matrix *mat_a, bool transpose_a,
                          const Matrix *mat_b, bool transpose_b, Matrix *result);
 MatrixStatusCode mat_repeat(Matrix *repeated, const Matrix *vec,
