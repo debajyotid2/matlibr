@@ -35,18 +35,23 @@ static void error_handler(const char *function, int line,
 // clang-format off
 // Macro for error handling
 #define HANDLE_ERROR(status_code, msg)                  \
-error_handler(__func__, __LINE__, status_code, msg)     
+error_handler(__func__, __LINE__, status_code, msg)
+
+// Macro to return on error
+#define RETURN_ON_ERROR(status_code, msg)               \
+    do {                                                \
+        HANDLE_ERROR(status_code, msg);                 \
+        return (status_code);                           \
+    } while (0)
 
 // Create a matrix
 #define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                 \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                         \
     if (matrix==NULL) {                                                                         \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received");                             \
-        return MATRIX_ERR_NULL_PTR;                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received");                          \
     }                                                                                           \
     if (nrows <= 0 || ncols <= 0) {                                                             \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Number of rows/columns cannot be <= 0.");   \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                    \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Number of rows/columns cannot be <= 0.");\
     }                                                                                           \
     matrix->nrows = (unsigned int)nrows;                                                        \
     matrix->ncols = (unsigned int)ncols;                                                        \
@@ -58,8 +63,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {         
 #define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)                      \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {                         \
     if (mat==NULL || copy==NULL) {                                                              \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                            \
-        return MATRIX_ERR_NULL_PTR;                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     MatrixStatusCode status = CREATE_FUNC(copy, mat->nrows, mat->ncols);                        \
     if (status != MATRIX_SUCCESS) {                                                             \
@@ -73,12 +77,11 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {         
 #define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                   \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {                           \
     if (mat==NULL || mat->data==NULL) {                                                         \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                            \
-        return MATRIX_ERR_NULL_PTR;                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     size_t total_elements = mat->nrows * mat->ncols;                                            \
     for (size_t i=0; i<total_elements; ++i) {                                                   \
-        mat->data[i] = value;                                                                   \
+        mat->data[i] = (value);                                                                   \
     }                                                                                           \
     return MATRIX_SUCCESS;                                                                      \
 }
@@ -87,8 +90,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {           
 #define DEFINE_MATRIX_SCALE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, SCALING_FUNC)                    \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE fac) {                             \
     if (mat==NULL || mat->data==NULL) {                                                         \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                            \
-        return MATRIX_ERR_NULL_PTR;                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     SCALING_FUNC(mat->nrows * mat->ncols, fac, mat->data, 1);                                   \
     return MATRIX_SUCCESS;                                                                      \
@@ -98,8 +100,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE fac) {             
 #define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)                           \
 MatrixStatusCode FUNC_NAME(const MATRIX_TYPE* mat) {                                            \
     if (mat==NULL || mat->data==NULL) {                                                         \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                            \
-        return MATRIX_ERR_NULL_PTR;                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     size_t total_elements = mat->nrows*mat->ncols;                                              \
     for (size_t i = 0; i < total_elements; i++) {                                               \
@@ -118,20 +119,17 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE* mat) {                            
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,                         \
                            DATA_TYPE step, unsigned int dimension) {                                \
     if (out==NULL) {                                                                                \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                \
-        return MATRIX_ERR_NULL_PTR;                                                                 \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
     unsigned int n_elem;                                                                            \
     MatrixStatusCode status;                                                                        \
-    if (high <= low) {                                                                              \
-        HANDLE_ERROR(MATRIX_ERR_RANGE_INVALID, "Upper limit cannot be <= lower limit.");            \
-        return MATRIX_ERR_RANGE_INVALID;                                                            \
+    if ((high) <= (low)) {                                                                              \
+        RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "Upper limit cannot be <= lower limit.");         \
     }                                                                                               \
-    if (step <= 0) {                                                                                \
-        HANDLE_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");            \
-        return MATRIX_ERR_RANGE_INVALID_STEP;                                                       \
+    if ((step) <= 0) {                                                                                \
+        RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)((high - low) / step);                                                            \
+    n_elem = (int)(((high) - (low)) / (step));                                                            \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -149,11 +147,10 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
         }                                                                                           \
         break;                                                                                      \
     default:                                                                                        \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.");             \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                        \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.");          \
     }                                                                                               \
     for (int i = 0; i < n_elem; ++i) {                                                              \
-        out->data[i] = low + i * step;                                                              \
+        out->data[i] = (low) + i * (step);                                                              \
     }                                                                                               \
     return MATRIX_SUCCESS;                                                                          \
 }
@@ -163,21 +160,18 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,                               \
                             unsigned int dimension, unsigned int repeats) {                             \
     if (vec==NULL || repeated==NULL) {                                                                  \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     unsigned int nidx, idx_fac, inc;                                                                    \
     MatrixStatusCode status;                                                                            \
     /* Check if vec is a vector */                                                                      \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Only a one dimensional vector can be repeated.");   \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Only a one dimensional vector can be repeated.");\
     }                                                                                                   \
     switch (dimension) {                                                                                \
     case 0:                                                                                             \
         if (vec->nrows != 1) {                                                                          \
-            HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a row vector along rows.");     \
-            return MATRIX_ERR_INVALID_DIMENSION;                                                        \
+            RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a row vector along rows.");  \
         }                                                                                               \
         nidx = vec->ncols;                                                                              \
         idx_fac = vec->ncols;                                                                           \
@@ -189,8 +183,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,       
         break;                                                                                          \
     case 1:                                                                                             \
         if (vec->ncols != 1) {                                                                          \
-            HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a column vector along rows.");  \
-            return MATRIX_ERR_INVALID_DIMENSION;                                                        \
+            RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a column vector along rows.");\
         }                                                                                               \
         nidx = vec->nrows;                                                                              \
         idx_fac = 1;                                                                                    \
@@ -201,8 +194,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,       
         }                                                                                               \
         break;                                                                                          \
     default:                                                                                            \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.\n");               \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.\n");            \
     }                                                                                                   \
     for (size_t i = 0; i < repeats; i++) {                                                              \
         COPY_FUNC(nidx, vec->data, 1, &(repeated->data[idx_fac * i]), inc);                             \
@@ -214,15 +206,14 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,       
 #define DEFINE_MATRIX_ADD_SCALAR(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                     \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {                                  \
     if (mat==NULL || mat->data==NULL) {                                                                 \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     if (scalar == 0) {                                                                                  \
         return MATRIX_SUCCESS;                                                                          \
     }                                                                                                   \
     int nelem = mat->nrows * mat->ncols;                                                                \
     for (int i=0; i<nelem; ++i) {                                                                       \
-        mat->data[i] += scalar;                                                                         \
+        mat->data[i] += (scalar);                                                                         \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
 }
@@ -232,14 +223,12 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
 #define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
     if (mat_a==NULL || mat_b==NULL) {                                                                   \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
     if (mat_a->nrows != mat_b->nrows ||                                                                 \
         mat_a->ncols != mat_b->ncols) {                                                                 \
-        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Matrices A and B must be of same dimension.");     \
-        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Matrices A and B must be of same dimension.");  \
     }                                                                                                   \
     AXPY_FUNC(mat_b->nrows * mat_b->ncols, 1, mat_b->data, 1, mat_a->data, 1);                          \
     return MATRIX_SUCCESS;                                                                              \
@@ -250,14 +239,12 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 #define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
     if (mat_a==NULL || mat_b==NULL) {                                                                   \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
     if (mat_a->nrows != mat_b->nrows ||                                                                 \
         mat_a->ncols != mat_b->ncols) {                                                                 \
-        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Matrices A and B must be of same dimension.");     \
-        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Matrices A and B must be of same dimension.");  \
     }                                                                                                   \
     AXPY_FUNC(mat_b->nrows * mat_b->ncols, -1, mat_b->data, 1, mat_a->data, 1);                         \
     return MATRIX_SUCCESS;                                                                              \
@@ -270,28 +257,24 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 #define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL) {                                                                       \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");  \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");\
     }                                                                                                   \
     /* Row vector addition */                                                                           \
     if (vec->nrows == 1) {                                                                              \
         if (vec->ncols != mat->ncols) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Column dimension mismatch between matrix and row vector.");                   \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i < mat->nrows; ++i) {                                                         \
             AXPY_FUNC(mat->ncols, 1, vec->data, 1, &mat->data[i*mat->ncols], 1);                        \
         }                                                                                               \
     } else if (vec->ncols == 1) {                                                                       \
         if (vec->nrows != mat->nrows) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
             for (size_t j=0; j < mat->ncols; ++j) {                                                     \
@@ -309,28 +292,24 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 #define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL) {                                                                       \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                    \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");  \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");\
     }                                                                                                   \
     /* Row vector addition */                                                                           \
     if (vec->nrows == 1) {                                                                              \
         if (vec->ncols != mat->ncols) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Column dimension mismatch between matrix and row vector.");                   \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i < mat->nrows; ++i) {                                                         \
             AXPY_FUNC(mat->ncols, -1, vec->data, 1, &mat->data[i*mat->ncols], 1);                       \
         }                                                                                               \
     } else if (vec->ncols == 1) {                                                                       \
         if (vec->nrows != mat->nrows) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
             for (size_t j=0; j < mat->ncols; ++j) {                                                     \
@@ -350,8 +329,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
                            const MATRIX_TYPE *mat_b, bool transpose_b,                                  \
                            MATRIX_TYPE *result) {                                                       \
     if (mat_a==NULL || mat_b==NULL || result==NULL) {                                                   \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer.");                                         \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer.");                                      \
     }                                                                                                   \
     unsigned int m, n, k, k_prime;                                                                      \
     unsigned int lda, ldb;                                                                              \
@@ -364,14 +342,12 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
     n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                      \
     /* Ensure correct dimensions for matrix multiplication */                                           \
     if (k != k_prime) {                                                                                 \
-        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                  \
             "IntMatrix dimensions must satisfy k = k' for multiplying m "                               \
             "x k and k' x n matrices.");                                                                \
-        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
     }                                                                                                   \
     if (result->nrows != m || result->ncols != n) {                                                     \
-        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Incorrect dimensions of result matrix.");          \
-        return MATRIX_ERR_DIMENSION_MISMATCH;                                                           \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Incorrect dimensions of result matrix.");       \
     }                                                                                                   \
     FILL_FUNC(result, (DATA_TYPE)0);                                                                    \
     lda = transpose_a ? m : k;                                                                          \
@@ -387,29 +363,24 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
 MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *indices,    \
                            unsigned int dimension) {                                                    \
     if (from==NULL || to==NULL || indices==NULL) {                                                      \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrices or indices.");                 \
-        return MATRIX_ERR_NULL_PTR;                                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrices or indices.");              \
     }                                                                                                   \
     if (indices->ncols != 1) {                                                                          \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "'indices' must be a row vector.");                  \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "'indices' must be a row vector.");               \
     }                                                                                                   \
     switch (dimension) {                                                                                \
     case 0:  /* Gather rows */                                                                          \
         if (to->ncols != from->ncols) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "'to' and 'from' matrices must have same number of columns.");                 \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         if (to->nrows != indices->nrows) {                                                              \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "'to' must have the same number of rows as number of indices in 'indices'.");  \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
             if (indices->data[i] >= from->nrows) {                                                      \
-                HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");               \
-                return MATRIX_ERR_INDEX_OUT_OF_BOUNDS;                                                  \
+                RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
             }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
                       &to->data[i*to->ncols], 1);                                                       \
@@ -417,19 +388,16 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         break;                                                                                          \
     case 1: /* Gather columns */                                                                        \
         if (to->nrows != from->nrows) {                                                                 \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "'to' and 'from' matrices must have same number of rows.");                    \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         if (to->ncols != indices->nrows) {                                                              \
-            HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                 \
+            RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                      "'to' must have the same number of columns as number of indices in 'indices'.");   \
-            return MATRIX_ERR_DIMENSION_MISMATCH;                                                       \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
             if (indices->data[i] >= from->ncols) {                                                      \
-                HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");            \
-                return MATRIX_ERR_INDEX_OUT_OF_BOUNDS;                                                  \
+                RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
             }                                                                                           \
             for (size_t j=0; j<from->nrows; ++j) {                                                      \
                 to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
@@ -437,8 +405,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         }                                                                                               \
         break;                                                                                          \
     default:                                                                                            \
-        HANDLE_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either rows(0) or columns(1).");  \
-        return MATRIX_ERR_INVALID_DIMENSION;                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either rows(0) or columns(1).");\
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
 }
@@ -447,8 +414,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
 #define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                                                   \
     if (matrix == NULL) {                                                                           \
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                \
-        return MATRIX_ERR_NULL_PTR;                                                                 \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
     if ((matrix->data) != NULL) {                                                                   \
         free(matrix->data);                                                                         \
@@ -666,8 +632,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
     int *temp_ints = NULL;
 
     if (low >= high) {
-        HANDLE_ERROR(MATRIX_ERR_RANGE_INVALID, "low >= high.");
-        return MATRIX_ERR_RANGE_INVALID;
+        RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "low >= high.");
     }
     
     srand(seed);
@@ -683,9 +648,8 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
     }
 
     if (mat->nrows * mat->ncols > (size_t)(high - low)) {
-        HANDLE_ERROR(MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE, 
+        RETURN_ON_ERROR(MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE, 
                      "Too many numbers to generate without replacement.");
-        return MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE;
     }
 
     // Random numbers without replacement
@@ -736,8 +700,7 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 MatrixStatusCode mat_fill_random(Matrix *mat, unsigned int seed) {
     if (mat == NULL) {
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
-        return MATRIX_ERR_NULL_PTR;
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
     srand(seed);
 
@@ -755,15 +718,13 @@ MatrixStatusCode mat_fill_random(Matrix *mat, unsigned int seed) {
 MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
                               unsigned int seed) {
     if (mat==NULL || means==NULL || stds==NULL) {
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
-        return MATRIX_ERR_NULL_PTR;
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
     srand(seed);
 
     if (means->nrows != mat->ncols || stds->nrows != mat->ncols ||
         means->ncols != 1 || stds->ncols != 1) {
-        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
-        return MATRIX_ERR_DIMENSION_MISMATCH;
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
     }
 
     const double two_pi = 2.0 * M_PI;
@@ -775,8 +736,7 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
             double std = stds->data[j];
 
             if (std == 0.0) {
-                HANDLE_ERROR(MATRIX_ERROR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
-                return MATRIX_ERROR_ZERO_STD_DEV;
+                RETURN_ON_ERROR(MATRIX_ERROR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
             }
 
             // Use Box-Muller transform to generate the random number
@@ -800,8 +760,7 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 // Sum of absolute values of matrix elements
 MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
     if (mat == NULL || sum==NULL) {
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
-        return MATRIX_ERR_NULL_PTR;
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
 
     *sum = cblas_dasum(mat->nrows * mat->ncols, mat->data, 1);
@@ -812,8 +771,7 @@ MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
 // columns.
 MatrixStatusCode mat_norm(double* norm, Matrix *mat) {
     if (mat == NULL || norm==NULL) {
-        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
-        return MATRIX_ERR_NULL_PTR;
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
     *norm = cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
     return MATRIX_SUCCESS;
