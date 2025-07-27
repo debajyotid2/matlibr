@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "matrix.h"
@@ -424,37 +425,50 @@ void FUNC_NAME(MATRIX_TYPE *matrix) {                                           
 // Scales a vector x := alpha * x. (?scal)
 static void iscal(const unsigned int num_elem, const int alpha, int *x,
            const unsigned int incx) {
-    if (x == NULL || incx == 0)
+    if (x == NULL || incx == 0) {
         return;
-    for (size_t i = 0; i < num_elem; i++)
+    }
+    for (size_t i = 0; i < num_elem; i++) {
         x[i * incx] *= alpha;
+    }
 }
 
 // Copies a vector y := x. (?copy)
 static void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
            int *y, const unsigned int incy) {
-    if (x == NULL || y == NULL)
+    if (x == NULL || y == NULL) {
         return;
+    }
 
-    if (incx == 0 || incy == 0)
+    if (incx == 0 || incy == 0) {
         return;
+    }
 
-    for (size_t i = 0; i < num_elem; i++)
+    if (incx == 1 && incy == 1) {
+        memcpy(y, x, num_elem * sizeof(int));
+        return;
+    }
+
+    for (size_t i = 0; i < num_elem; i++) {
         y[i * incy] = x[i * incx];
+    }
 }
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
 static void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
            const unsigned int incx, int *y, const unsigned int incy) {
-    if (x == NULL || y == NULL)
+    if (x == NULL || y == NULL) {
         return;
+    }
 
-    if (incx == 0 || incy == 0)
+    if (incx == 0 || incy == 0) {
         return;
+    }
 
-    for (size_t i = 0; i < num_elem; i++)
+    for (size_t i = 0; i < num_elem; i++) {
         y[i * incy] += alpha * x[i * incx];
+    }
 }
 
 // General dense matrix multiplication for integer matrices. (?gemm)
