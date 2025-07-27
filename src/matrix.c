@@ -798,21 +798,23 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 }
 
 // Sum of absolute values of matrix elements
-double mat_abs_sum(Matrix *mat) {
-    if (mat == NULL)
-        return 0.0;
+MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
+    if (mat == NULL || sum==NULL) {
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
+        return MATRIX_ERR_NULL_PTR;
+    }
 
-    double sum = 0.0;
-    sum = cblas_dasum(mat->nrows * mat->ncols, mat->data, 1);
-    return sum;
+    *sum = cblas_dasum(mat->nrows * mat->ncols, mat->data, 1);
+    return MATRIX_SUCCESS;
 }
 
 // Euclidean norm of a matrix across all rows and
 // columns.
-double mat_norm(Matrix *mat) {
-    if (mat == NULL) {
-        perror("ERROR: Null pointer in argument matrix.");
-        return 0.0;
+MatrixStatusCode mat_norm(double* norm, Matrix *mat) {
+    if (mat == NULL || norm==NULL) {
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
+        return MATRIX_ERR_NULL_PTR;
     }
-    return cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
+    *norm = cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
+    return MATRIX_SUCCESS;
 }
