@@ -26,10 +26,10 @@
 #include "matrix.h"
 
 // Function for displaying and handling errors
-static void error_handler(const char* function, int line, 
-                          MatrixStatusCode status_code, const char* msg) {
-    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", 
-            function, line, status_code, msg);
+static void error_handler(const char *function, int line,
+                          MatrixStatusCode status_code, const char *msg) {
+    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function,
+            line, status_code, msg);
 }
 
 // clang-format off
@@ -734,30 +734,36 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
-void mat_fill_random(Matrix *mat, unsigned int seed) {
+MatrixStatusCode mat_fill_random(Matrix *mat, unsigned int seed) {
+    if (mat == NULL) {
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
+        return MATRIX_ERR_NULL_PTR;
+    }
     srand(seed);
 
-    for (size_t i = 0; i < mat->nrows; i++)
-        for (size_t j = 0; j < mat->ncols; j++)
+    for (size_t i = 0; i < mat->nrows; i++) {
+        for (size_t j = 0; j < mat->ncols; j++) {
             mat->data[i * mat->ncols + j] = (double)rand() / (double)(RAND_MAX);
+        }
+    }
+    return MATRIX_SUCCESS;
 }
 
 // Fill a matrix with random numbers from a Gaussian distribution
 // with mean "mean" and standard deviation "std", using the Box-Muller
 // transform (https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform)
-void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
+MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
                               unsigned int seed) {
-    srand(seed);
-
-    if (mat == NULL || means == NULL || stds == NULL) {
-        perror("ERROR: Null values in argument matrices.");
-        return;
+    if (mat==NULL || means==NULL || stds==NULL) {
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
+        return MATRIX_ERR_NULL_PTR;
     }
+    srand(seed);
 
     if (means->nrows != mat->ncols || stds->nrows != mat->ncols ||
         means->ncols != 1 || stds->ncols != 1) {
-        perror("ERROR: Means/Stddevs matrix is of improper dimensions.");
-        return;
+        HANDLE_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
+        return MATRIX_ERR_DIMENSION_MISMATCH;
     }
 
     const double two_pi = 2.0 * M_PI;
@@ -769,8 +775,8 @@ void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
             double std = stds->data[j];
 
             if (std == 0.0) {
-                perror("ERROR: Standard deviation cannot be zero.");
-                return;
+                HANDLE_ERROR(MATRIX_ERROR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
+                return MATRIX_ERROR_ZERO_STD_DEV;
             }
 
             // Use Box-Muller transform to generate the random number
@@ -788,6 +794,7 @@ void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
                            : mag * sin(two_pi * u_2) + mean;
         }
     }
+    return MATRIX_SUCCESS;
 }
 
 // Sum of absolute values of matrix elements
