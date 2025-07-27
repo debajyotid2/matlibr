@@ -278,7 +278,7 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                            
             return;                                                                                     \
         }                                                                                               \
         for (size_t i=0; i < mat->nrows; ++i) {                                                         \
-            AXPY_FUNC(mat->ncols, -1, vec->data, 1, &mat->data[i*mat->ncols], 1);                        \
+            AXPY_FUNC(mat->ncols, -1, vec->data, 1, &mat->data[i*mat->ncols], 1);                       \
         }                                                                                               \
     } else if (vec->ncols == 1) {                                                                       \
         if (vec->nrows != mat->nrows) {                                                                 \
@@ -291,6 +291,55 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                            
             }                                                                                           \
         }                                                                                               \
     }                                                                                                   \
+}
+
+// Multiply two matrices A and B. Matrices are multiplied
+// after transforming them. Matrix dimensions must be such that
+//     dim(transform(A)) = m x k
+//     dim(transform(B)) = k' x n
+#define DEFINE_MATRIX_MUL_INPLACE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)               \
+void FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                                     \
+               MATRIX_TYPE *mat_b, bool transpose_b,                                                     \
+               MATRIX_TYPE *result) {                                                                    \
+    unsigned int m, n, k, k_prime;                                                                       \
+    unsigned int lda, ldb;                                                                               \
+    DATA_TYPE alpha = 1, beta = 0;                                                                       \
+    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;                                   \
+    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;                                   \
+    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
+    k = transpose_a ? mat_a->nrows : mat_a->ncols;                                                       \
+    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;                                                 \
+    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
+    /* Ensure correct dimensions for matrix multiplication */                                            \
+    if (k != k_prime) {                                                                                  \
+        perror(                                                                                          \
+            "ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m "                         \
+            "x k and k' x n matrices.");                                                                 \
+        return;                                                                                          \
+    }                                                                                                    \
+    if (result->nrows != m || result->ncols != n) {                                                      \
+        perror("ERROR: Incorrect dimensions of result matrix.");                                         \
+        return;                                                                                          \
+    }                                                                                                    \
+    FILL_FUNC(result, (DATA_TYPE)0);                                                                     \
+    lda = transpose_a ? m : k;                                                                           \
+    ldb = transpose_b ? k : n;                                                                           \
+    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, lda, mat_b->data,                           \
+          ldb, beta, result->data, n);                                                                   \
+}
+
+// Matrix multiplication. This function calls the "inplace" version under the hood
+#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, CREATE_FUNC, INPLACE_MATMUL_FUNC)                      \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                              \
+               MATRIX_TYPE *mat_b, bool transpose_b) {                                                   \
+    unsigned int m, n;                                                                                   \
+    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
+    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
+    MATRIX_TYPE result = CREATE_FUNC(m, n);                                                              \
+    if (result.data) {                                                                                   \
+        INPLACE_MATMUL_FUNC(mat_a, transpose_a, mat_b, transpose_b, &result);                            \
+    }                                                                                                    \
+    return result;                                                                                       \
 }
 
 // Gather rows/columns from "from" and store in
@@ -334,22 +383,6 @@ void FUNC_NAME(MATRIX_TYPE *matrix) {                                           
     matrix->data = NULL;                                                                            \
 }
 
-DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
-DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
-DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy)
-DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
-DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
-DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
-DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
-DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
-DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
-DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
-DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
-DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
-
 /************************************************************/
 /*******Basic C implementations of BLAS functions************/
 /*******for which integer or double implementations**********/
@@ -361,7 +394,7 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 /************************************************************/
 
 // Scales a vector x := alpha * x. (?scal)
-void iscal(const unsigned int num_elem, const int alpha, int *x,
+static void iscal(const unsigned int num_elem, const int alpha, int *x,
            const unsigned int incx) {
     if (x == NULL || incx == 0)
         return;
@@ -370,7 +403,7 @@ void iscal(const unsigned int num_elem, const int alpha, int *x,
 }
 
 // Copies a vector y := x. (?copy)
-void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
+static void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
            int *y, const unsigned int incy) {
     if (x == NULL || y == NULL)
         return;
@@ -384,7 +417,7 @@ void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
-void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
+static void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
            const unsigned int incx, int *y, const unsigned int incy) {
     if (x == NULL || y == NULL)
         return;
@@ -403,7 +436,7 @@ void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
 // (e.g. "https://www.intel.com/content/www/us/en
 // /docs/onemkl/developer-reference-c/2023-1/cblas-gemm
 // -001.html#GUID-97718E5C-6E0A-44F0-B2B1-A551F0F164B2")
-void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
            const unsigned int m, const unsigned int n, const unsigned int k,
            const int alpha, const int *a, const unsigned int lda, const int *b,
            const unsigned int ldb, const int beta, int *c,
@@ -481,7 +514,7 @@ void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices.
-void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
+static void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
            int *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         perror("ERROR! Null pointer in array argument(s).");
@@ -495,7 +528,7 @@ void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices. Double precision arrays supported.
-void dusga(const unsigned int num_elem, const double *y,
+static void dusga(const unsigned int num_elem, const double *y,
            const unsigned int incy, double *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         perror("ERROR! Null pointer in array argument(s).");
@@ -504,6 +537,19 @@ void dusga(const unsigned int num_elem, const double *y,
     for (size_t i = 0; i < num_elem; i++) {
         x[i] = y[idxs[i * incy]];
     }
+}
+
+// Wrapper function for cblas_dgemm
+void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+           const unsigned int m, const unsigned int n, const unsigned int k,
+           const double alpha, const double *a, const unsigned int lda, const double *b,
+           const unsigned int ldb, const double beta, double *c,
+           const unsigned int ldc) {
+    cblas_dgemm(CblasRowMajor, transa, transb,
+                m, n, k,
+                alpha, a, lda,
+                b, ldb, beta,
+                c, ldc);
 }
 
 /************************************************************************/
@@ -523,8 +569,28 @@ DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_MUL_INPLACE(intmat_mul_inplace, IntMatrix, int, igemm, intmat_fill)
+DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, intmat_create, intmat_mul_inplace)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
+
+DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
+DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
+DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy)
+DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
+DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
+DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_MUL_INPLACE(mat_mul_inplace, Matrix, double, double_gemm_wrapper, mat_fill)
+DEFINE_MATRIX_MUL(mat_mul, Matrix, mat_create, mat_mul_inplace)
+DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
+DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
@@ -573,91 +639,9 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
     free(temp_ints);
 }
 
-// Multiply two matrices A and B. Matrices are multiplied
-// after transforming them. IntMatrix dimensions must be such that
-//     dim(transform(A)) = m x k
-//     dim(transform(B)) = k' x n
-IntMatrix intmat_mul(IntMatrix *intmat_a, bool transpose_a, IntMatrix *intmat_b,
-                     bool transpose_b) {
-    unsigned int lda, ldb;
-    unsigned int m, n, k, k_prime;
-
-    IntMatrix result;
-    int alpha = 1, beta = 0;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;
-
-    m = transpose_a ? intmat_a->ncols : intmat_a->nrows;
-    k = transpose_a ? intmat_a->nrows : intmat_a->ncols;
-    k_prime = transpose_b ? intmat_b->ncols : intmat_b->nrows;
-    n = transpose_b ? intmat_b->nrows : intmat_b->ncols;
-
-    // Ensure correct dimensions for matrix multiplication
-    if (k != k_prime) {
-        result.data = NULL;
-        perror(
-            "ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m "
-            "x k and k' x n matrices.");
-        return result;
-    }
-
-    result = intmat_create(m, n);
-    intmat_fill(&result, 0);
-
-    lda = transpose_a ? m : k;
-    ldb = transpose_b ? k : n;
-
-    igemm(trans_a, trans_b, m, n, k, alpha, intmat_a->data, lda, intmat_b->data,
-          ldb, beta, result.data, n);
-    return result;
-}
-
-// Multiply two matrices and store result in place
-void intmat_mul_inplace(IntMatrix *intmat_a, bool transpose_a,
-                        IntMatrix *intmat_b, bool transpose_b,
-                        IntMatrix *result) {
-    unsigned int m, n, k, k_prime;
-    unsigned int lda, ldb;
-    int alpha = 1, beta = 0;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;
-
-    m = transpose_a ? intmat_a->ncols : intmat_a->nrows;
-    k = transpose_a ? intmat_a->nrows : intmat_a->ncols;
-    k_prime = transpose_b ? intmat_b->ncols : intmat_b->nrows;
-    n = transpose_b ? intmat_b->nrows : intmat_b->ncols;
-
-    // Ensure correct dimensions for matrix multiplication
-    if (k != k_prime) {
-        perror(
-            "ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m "
-            "x k and k' x n matrices.");
-        intmat_destroy(result);
-        return;
-    }
-    if (result->nrows != m || result->ncols != n) {
-        perror("ERROR: Incorrect dimensions of result matrix.");
-        intmat_destroy(result);
-        return;
-    }
-
-    intmat_fill(result, 0);
-
-    lda = transpose_a ? m : k;
-    ldb = transpose_b ? k : n;
-
-    igemm(trans_a, trans_b, m, n, k, alpha, intmat_a->data, lda, intmat_b->data,
-          ldb, beta, result->data, n);
-}
-
 /************************************************************************/
 /***************Functions for Matrix (double precision data)*************/
 /************************************************************************/
-
-// Create a matrix
-
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 void mat_fill_random(Matrix *mat, unsigned int seed) {
@@ -737,82 +721,3 @@ double mat_norm(Matrix *mat) {
     }
     return cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
 }
-
-
-// Multiply two matrices A and B. Matrices are multiplied
-// after transforming them. Matrix dimensions must be such that
-//     dim(transform(A)) = m x k
-//     dim(transform(B)) = k' x n
-Matrix mat_mul(Matrix *mat_a, bool transpose_a, Matrix *mat_b,
-               bool transpose_b) {
-    unsigned int lda, ldb;
-    unsigned int m, n, k, k_prime;
-
-    Matrix result;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;
-
-    m = transpose_a ? mat_a->ncols : mat_a->nrows;
-    k = transpose_a ? mat_a->nrows : mat_a->ncols;
-    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;
-    n = transpose_b ? mat_b->nrows : mat_b->ncols;
-
-    // Ensure correct dimensions for matrix multiplication
-    if (k != k_prime) {
-        result.data = NULL;
-        perror("ERROR: Matrix dimensions must satisfy k = k' for multiplying m "
-               "x k "
-               "and k' x n matrices.");
-        return result;
-    }
-
-    result = mat_create(m, n);
-    mat_fill(&result, 0.0);
-
-    lda = transpose_a ? m : k;
-    ldb = transpose_b ? k : n;
-
-    cblas_dgemm(CblasRowMajor, trans_a, trans_b, m, n, k, 1.0, mat_a->data, lda,
-                mat_b->data, ldb, 0.0, result.data, n);
-    return result;
-}
-
-// Multiply two matrices and store result in place
-void mat_mul_inplace(Matrix *mat_a, bool transpose_a, Matrix *mat_b,
-                     bool transpose_b, Matrix *result) {
-    unsigned int m, n, k, k_prime;
-    unsigned int lda, ldb;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;
-
-    m = transpose_a ? mat_a->ncols : mat_a->nrows;
-    k = transpose_a ? mat_a->nrows : mat_a->ncols;
-    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;
-    n = transpose_b ? mat_b->nrows : mat_b->ncols;
-
-    // Ensure correct dimensions for matrix multiplication
-    if (k != k_prime) {
-        perror("ERROR: Matrix dimensions must satisfy k = k' for multiplying m "
-               "x k "
-               "and k' x n matrices.");
-        mat_destroy(result);
-        return;
-    }
-    if (result->nrows != m || result->ncols != n) {
-        perror("ERROR: Incorrect dimensions of result matrix.");
-        mat_destroy(result);
-        return;
-    }
-
-    mat_fill(result, 0.0);
-
-    lda = transpose_a ? m : k;
-    ldb = transpose_b ? k : n;
-
-    cblas_dgemm(CblasRowMajor, trans_a, trans_b, m, n, k, 1.0, mat_a->data, lda,
-                mat_b->data, ldb, 0.0, result->data, n);
-}
-
-
