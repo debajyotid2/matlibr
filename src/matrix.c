@@ -626,7 +626,6 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
 
     if (low >= high) {
         perror("ERROR: low >= high.");
-        intmat_destroy(mat);
         return;
     }
 
@@ -640,7 +639,6 @@ void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
 
     if (mat->nrows * mat->ncols > (size_t)(high - low)) {
         perror("ERROR: Too many numbers to generate without replacement.");
-        intmat_destroy(mat);
         return;
     }
 
@@ -710,7 +708,6 @@ void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
     if (means->nrows != mat->ncols || stds->nrows != mat->ncols ||
         means->ncols != 1 || stds->ncols != 1) {
         perror("ERROR: Means/Stddevs matrix is of improper dimensions.");
-        mat_destroy(mat);
         return;
     }
 
@@ -724,7 +721,6 @@ void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
 
             if (std == 0.0) {
                 perror("ERROR: Standard deviation cannot be zero.");
-                mat_destroy(mat);
                 return;
             }
 

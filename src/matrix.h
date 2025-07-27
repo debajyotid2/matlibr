@@ -22,18 +22,23 @@
 #include <stdbool.h>
 
 // Matrix for double precision data
-typedef struct
-{
+typedef struct {
     unsigned int nrows, ncols;
     double *data;
 } Matrix;
 
 // Matrix for integer data
-typedef struct
-{
+typedef struct {
     unsigned int nrows, ncols;
     int *data;
 } IntMatrix;
+
+// Operation status codes
+typedef enum {
+    MATRIX_SUCCESS = 0,
+    MATRIX_ERR_NULL_PTR,
+    MATRIX_ERR_DIMENSION_MISMATCH
+} MatrixStatus;
 
 // Functions for integer matrices
 IntMatrix intmat_create(int nrow, int ncol);
