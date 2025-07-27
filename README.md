@@ -1,5 +1,8 @@
 # matlibr
 
+> [!NOTE]
+> This is a **PROTOTYPE** and **not** production-ready. Use at your own risk.
+
 `matlibr` is a barebones implementation of a 2D matrix datatype in C. It also includes some basic arithmetic operations that are relevant to matrices.
 
 ## Features

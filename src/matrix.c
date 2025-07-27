@@ -1,28 +1,387 @@
 /* Library for reading, writing and manipulating matrix data.
- 
-  Copyright (c) 2024 Debajyoti Debnath                                         
-                                                                           
-  Licensed under the Apache License, Version 2.0 (the "License");          
-  you may not use this file except in compliance with the License.         
-  You may obtain a copy of the License at                                  
-                                                                           
-      http://www.apache.org/licenses/LICENSE-2.0                           
-                                                                           
-  Unless required by applicable law or agreed to in writing, software      
-  distributed under the License is distributed on an "AS IS" BASIS,        
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-  See the License for the specific language governing permissions and      
-  limitations under the License.                                           
+
+  Copyright (c) 2024 Debajyoti Debnath
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 */
 
+#include <cblas.h>
+#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cblas.h>
 #include <time.h>
-#include <stdbool.h>
-#include <math.h>
+
 #include "matrix.h"
 
+// clang-format off
+// Create a matrix
+#define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                 \
+MATRIX_TYPE FUNC_NAME(int nrows, int ncols) {                                                   \
+    MATRIX_TYPE matrix;                                                                         \
+    if (nrows <= 0 || ncols <= 0) {                                                             \
+        perror("ERROR: Number of rows/columns cannot be <= 0.");                                \
+        matrix.data = NULL;                                                                     \
+        return matrix;                                                                          \
+    }                                                                                           \
+    matrix.nrows = (unsigned int)nrows;                                                         \
+    matrix.ncols = (unsigned int)ncols;                                                         \
+    matrix.data = (DATA_TYPE *)calloc(matrix.nrows * matrix.ncols, sizeof(DATA_TYPE));          \
+    return matrix;                                                                              \
+}
+
+// Copy a matrix
+#define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)                      \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat) {                                                       \
+    MATRIX_TYPE copy = CREATE_FUNC(mat->nrows, mat->ncols);                                     \
+    COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy.data, 1);                             \
+    return copy;                                                                                \
+}                                                                                               \
+
+// Copy a matrix inplace
+#define DEFINE_MATRIX_COPY_INPLACE(FUNC_NAME, MATRIX_TYPE, COPY_FUNC)                           \
+void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                                           \
+    /* Check dimensions */                                                                      \
+    if (mat->nrows != copy->nrows || mat->ncols != copy->ncols) {                               \
+        perror("ERROR: copy and original matrix must have same dimensions.");                   \
+        return;                                                                                 \
+    }                                                                                           \
+    COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                            \
+}
+
+// Fill a matrix with a single value
+#define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                   \
+void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                                             \
+    if (mat==NULL || mat->data==NULL) {                                                         \
+        return;                                                                                 \
+    }                                                                                           \
+    size_t total_elements = mat->nrows * mat->ncols;                                            \
+    for (size_t i=0; i<total_elements; ++i) {                                                   \
+        mat->data[i] = value;                                                                   \
+    }                                                                                           \
+}
+
+// Scale a matrix by a scalar
+#define DEFINE_MATRIX_SCALE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, SCALING_FUNC)                    \
+void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE fac) {                                               \
+    SCALING_FUNC(mat->nrows * mat->ncols, fac, mat->data, 1);                                   \
+}
+
+// Print a matrix
+#define DEFINE_MATRIX_PRINT(FUNC_NAME, MATRIX_TYPE, FORMAT_SPECIFIER)                           \
+void FUNC_NAME(const MATRIX_TYPE* mat) {                                                        \
+    if (mat == NULL || mat->data == NULL)                                                       \
+        return;                                                                                 \
+    size_t total_elements = mat->nrows*mat->ncols;                                              \
+    for (size_t i = 0; i < total_elements; i++) {                                               \
+        printf(FORMAT_SPECIFIER " ", mat->data[i]);                                             \
+        if (i%mat->ncols == 0) {                                                                \
+            printf("\n");                                                                       \
+        }                                                                                       \
+    }                                                                                           \
+}
+
+// Create a row (1)/column (0) vector (according to specified
+// dimension) with elements from "low" to "high"
+// (excluded) in "step" steps.
+#define DEFINE_MATRIX_RANGE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC)                         \
+MATRIX_TYPE FUNC_NAME(DATA_TYPE low, DATA_TYPE high, DATA_TYPE step, unsigned int dimension) {      \
+    MATRIX_TYPE out;                                                                                \
+    bool err = false;                                                                               \
+    unsigned int n_elem;                                                                            \
+    out.data = NULL;                                                                                \
+    if (high <= low) {                                                                              \
+        perror("Upper limit cannot be <= lower limit.");                                            \
+        err = true;                                                                                 \
+    }                                                                                               \
+    if (step <= 0) {                                                                                \
+        perror("Step cannot be zero or negative.");                                                 \
+        err = true;                                                                                 \
+    }                                                                                               \
+    n_elem = (int)((high - low) / step);                                                            \
+    if (n_elem==0) {                                                                                \
+        return out;     /* Return immediately if no elements can be created. */                     \
+    }                                                                                               \
+    switch (dimension) {                                                                            \
+    case 0:                                                                                         \
+        out = CREATE_FUNC(n_elem, 1);                                                               \
+        break;                                                                                      \
+    case 1:                                                                                         \
+        out = CREATE_FUNC(1, n_elem);                                                               \
+        break;                                                                                      \
+    default:                                                                                        \
+        perror("Dimension must be either 0 or 1.");                                                 \
+        err = true;                                                                                 \
+        break;                                                                                      \
+    }                                                                                               \
+    if (err) {                                                                                      \
+        return out;                                                                                 \
+    }                                                                                               \
+    for (int i = 0; i < n_elem; ++i) {                                                              \
+        out.data[i] = low + i * step;                                                               \
+    }                                                                                               \
+    return out;                                                                                     \
+}
+
+// Repeat a vector along a given dimension
+#define DEFINE_MATRIX_REPEAT(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC, COPY_FUNC)                 \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *vec, unsigned int dimension, unsigned int repeats) {                 \
+    MATRIX_TYPE repeated;                                                                               \
+    unsigned int nidx, idx_fac, inc;                                                                    \
+    bool err = false;                                                                                   \
+    repeated.data = NULL;                                                                               \
+    /* Check if vec is a vector */                                                                      \
+    if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
+        perror("ERROR: Only a one dimensional vector can be repeated.");                                \
+        return repeated;                                                                                \
+    }                                                                                                   \
+    switch (dimension) {                                                                                \
+    case 0:                                                                                             \
+        if (vec->nrows != 1) {                                                                          \
+            perror("ERROR: Can only repeat a row vector along rows.");                                  \
+            err = true;                                                                                 \
+        }                                                                                               \
+        nidx = vec->ncols;                                                                              \
+        idx_fac = vec->ncols;                                                                           \
+        inc = 1;                                                                                        \
+        repeated = CREATE_FUNC(repeats, vec->ncols);                                                    \
+        break;                                                                                          \
+    case 1:                                                                                             \
+        if (vec->ncols != 1) {                                                                          \
+            perror("ERROR: Can only repeat a column vector along rows.");                               \
+            err = true;                                                                                 \
+        }                                                                                               \
+        nidx = vec->nrows;                                                                              \
+        idx_fac = 1;                                                                                    \
+        inc = repeats;                                                                                  \
+        repeated = CREATE_FUNC(vec->nrows, repeats);                                                    \
+        break;                                                                                          \
+    default:                                                                                            \
+        perror("ERROR: Dimension must be either 0 or 1.\n");                                            \
+        err = true;                                                                                     \
+        break;                                                                                          \
+    }                                                                                                   \
+    if (err) {                                                                                          \
+        return repeated;                                                                                \
+    }                                                                                                   \
+    for (size_t i = 0; i < repeats; i++) {                                                              \
+        COPY_FUNC(nidx, vec->data, 1, &(repeated.data[idx_fac * i]), inc);                              \
+    }                                                                                                   \
+    return repeated;                                                                                    \
+}
+
+// Add a scalar to a matrix
+#define DEFINE_MATRIX_ADD_SCALAR(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                     \
+void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE scalar) {                                                    \
+    if (mat == NULL) {                                                                                  \
+        return;                                                                                         \
+    }                                                                                                   \
+    if (scalar == 0) {                                                                                  \
+        return;                                                                                         \
+    }                                                                                                   \
+    int nelem = mat->nrows * mat->ncols;                                                                \
+    for (int i=0; i<nelem; ++i) {                                                                       \
+        mat->data[i] += scalar;                                                                         \
+    }                                                                                                   \
+}
+
+// Add two matrices
+// Addition is performed as A := A+B
+#define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
+void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+    /* Ensure that both matrices are of same shape */                                                   \
+    if (mat_a->nrows != mat_b->nrows ||                                                                 \
+        mat_a->ncols != mat_b->ncols) {                                                                 \
+        perror("ERROR: matrices A and B must be of same dimension.");                                   \
+        return;                                                                                         \
+    }                                                                                                   \
+    AXPY_FUNC(mat_b->nrows * mat_b->ncols, 1, mat_b->data, 1, mat_a->data, 1);                          \
+}
+
+// Subtract two matrices
+// Subtraction is performed as A := A - B
+#define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
+void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+    /* Ensure that both matrices are of same shape */                                                   \
+    if (mat_a->nrows != mat_b->nrows ||                                                                 \
+        mat_a->ncols != mat_b->ncols) {                                                                 \
+        perror("ERROR: matrices A and B must be of same dimension.");                                   \
+        return;                                                                                         \
+    }                                                                                                   \
+    AXPY_FUNC(mat_b->nrows * mat_b->ncols, -1, mat_b->data, 1, mat_a->data, 1);                         \
+}
+
+// Add a vector to a matrix
+// Addition is done as: A := A + B
+// where vector B is repeated along the number
+// of dimensions as required to match A's dimensions.
+#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                                                    \
+    if (mat==NULL || vec==NULL) {                                                                       \
+        perror("ERROR: Got null pointer for matrix or vector.");                                        \
+        return;                                                                                         \
+    }                                                                                                   \
+    if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
+        perror("ERROR: Second argument must be a row or column vector.");                               \
+        return;                                                                                         \
+    }                                                                                                   \
+    /* Row vector addition */                                                                           \
+    if (vec->nrows == 1) {                                                                              \
+        if (vec->ncols != mat->ncols) {                                                                 \
+            perror("ERROR: Column dimension mismatch between matrix and row vector.");                  \
+            return;                                                                                     \
+        }                                                                                               \
+        for (size_t i=0; i < mat->nrows; ++i) {                                                         \
+            AXPY_FUNC(mat->ncols, 1, vec->data, 1, &mat->data[i*mat->ncols], 1);                        \
+        }                                                                                               \
+    } else if (vec->ncols == 1) {                                                                       \
+        if (vec->nrows != mat->nrows) {                                                                 \
+            perror("ERROR: Row dimension mismatch between matrix and column vector.");                  \
+            return;                                                                                     \
+        }                                                                                               \
+        for (size_t i=0; i<mat->nrows; ++i) {                                                           \
+            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
+                mat->data[i*mat->ncols + j] += vec->data[i];                                            \
+            }                                                                                           \
+        }                                                                                               \
+    }                                                                                                   \
+}
+
+// Subtract a vector from a matrix
+// Subtraction is done as: A := A - B
+// where vector B is repeated along the number
+// of dimensions as required to match A's dimensions.
+#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                                                    \
+    if (mat==NULL || vec==NULL) {                                                                       \
+        perror("ERROR: Got null pointer for matrix or vector.");                                        \
+        return;                                                                                         \
+    }                                                                                                   \
+    if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
+        perror("ERROR: Second argument must be a row or column vector.");                               \
+        return;                                                                                         \
+    }                                                                                                   \
+    /* Row vector addition */                                                                           \
+    if (vec->nrows == 1) {                                                                              \
+        if (vec->ncols != mat->ncols) {                                                                 \
+            perror("ERROR: Column dimension mismatch between matrix and row vector.");                  \
+            return;                                                                                     \
+        }                                                                                               \
+        for (size_t i=0; i < mat->nrows; ++i) {                                                         \
+            AXPY_FUNC(mat->ncols, -1, vec->data, 1, &mat->data[i*mat->ncols], 1);                       \
+        }                                                                                               \
+    } else if (vec->ncols == 1) {                                                                       \
+        if (vec->nrows != mat->nrows) {                                                                 \
+            perror("ERROR: Row dimension mismatch between matrix and column vector.");                  \
+            return;                                                                                     \
+        }                                                                                               \
+        for (size_t i=0; i<mat->nrows; ++i) {                                                           \
+            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
+                mat->data[i*mat->ncols + j] -= vec->data[i];                                            \
+            }                                                                                           \
+        }                                                                                               \
+    }                                                                                                   \
+}
+
+// Multiply two matrices A and B. Matrices are multiplied
+// after transforming them. Matrix dimensions must be such that
+//     dim(transform(A)) = m x k
+//     dim(transform(B)) = k' x n
+#define DEFINE_MATRIX_MUL_INPLACE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)               \
+void FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                                     \
+               MATRIX_TYPE *mat_b, bool transpose_b,                                                     \
+               MATRIX_TYPE *result) {                                                                    \
+    unsigned int m, n, k, k_prime;                                                                       \
+    unsigned int lda, ldb;                                                                               \
+    DATA_TYPE alpha = 1, beta = 0;                                                                       \
+    CBLAS_TRANSPOSE trans_a = transpose_a ? CblasTrans : CblasNoTrans;                                   \
+    CBLAS_TRANSPOSE trans_b = transpose_b ? CblasTrans : CblasNoTrans;                                   \
+    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
+    k = transpose_a ? mat_a->nrows : mat_a->ncols;                                                       \
+    k_prime = transpose_b ? mat_b->ncols : mat_b->nrows;                                                 \
+    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
+    /* Ensure correct dimensions for matrix multiplication */                                            \
+    if (k != k_prime) {                                                                                  \
+        perror(                                                                                          \
+            "ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m "                         \
+            "x k and k' x n matrices.");                                                                 \
+        return;                                                                                          \
+    }                                                                                                    \
+    if (result->nrows != m || result->ncols != n) {                                                      \
+        perror("ERROR: Incorrect dimensions of result matrix.");                                         \
+        return;                                                                                          \
+    }                                                                                                    \
+    FILL_FUNC(result, (DATA_TYPE)0);                                                                     \
+    lda = transpose_a ? m : k;                                                                           \
+    ldb = transpose_b ? k : n;                                                                           \
+    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, lda, mat_b->data,                           \
+          ldb, beta, result->data, n);                                                                   \
+}
+
+// Matrix multiplication. This function calls the "inplace" version under the hood
+#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, CREATE_FUNC, INPLACE_MATMUL_FUNC)                      \
+MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                              \
+               MATRIX_TYPE *mat_b, bool transpose_b) {                                                   \
+    unsigned int m, n;                                                                                   \
+    m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
+    n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
+    MATRIX_TYPE result = CREATE_FUNC(m, n);                                                              \
+    if (result.data) {                                                                                   \
+        INPLACE_MATMUL_FUNC(mat_a, transpose_a, mat_b, transpose_b, &result);                            \
+    }                                                                                                    \
+    return result;                                                                                       \
+}
+
+// Gather rows/columns from "from" and store in
+// "to" according to specified indices.
+#define DEFINE_MATRIX_GATHER(FUNC_NAME, MATRIX_TYPE, INT_MATRIX_TYPE, COPY_FUNC)                        \
+void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *indices,                \
+                unsigned int dimension) {                                                               \
+    if (from==NULL || to==NULL || indices==NULL) {                                                      \
+        perror("ERROR: Got null pointer for matrices or indices.");                                     \
+        return;                                                                                         \
+    }                                                                                                   \
+    switch (dimension) {                                                                                \
+    case 0:  /* Gather rows */                                                                          \
+        for (size_t i=0; i<indices->nrows; ++i) {                                                       \
+            COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
+                      &to->data[i*to->ncols], 1);                                                       \
+        }                                                                                               \
+        break;                                                                                          \
+    case 1: /* Gather columns */                                                                        \
+        for (size_t i=0; i<indices->ncols; ++i) {                                                       \
+            for (size_t j=0; j<from->nrows; ++j) {                                                      \
+                to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
+            }                                                                                           \
+        }                                                                                               \
+        break;                                                                                          \
+    default:                                                                                            \
+        perror("Dimension must be either rows(0) or columns(1).");                                      \
+        break;                                                                                          \
+    }                                                                                                   \
+}
+
+// Destroy a matrix
+#define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
+void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
+    if (matrix == NULL) {                                                                           \
+        return;                                                                                     \
+    }                                                                                               \
+    if ((matrix->data) != NULL) {                                                                   \
+        free(matrix->data);                                                                         \
+    }                                                                                               \
+    matrix->data = NULL;                                                                            \
+}
 
 /************************************************************/
 /*******Basic C implementations of BLAS functions************/
@@ -35,44 +394,39 @@
 /************************************************************/
 
 // Scales a vector x := alpha * x. (?scal)
-void iscal(const unsigned int num_elem, const int alpha,
-           int *x, const unsigned int incx)
-{
-    if (x==NULL || incx==0)
+static void iscal(const unsigned int num_elem, const int alpha, int *x,
+           const unsigned int incx) {
+    if (x == NULL || incx == 0)
         return;
-    for (size_t i=0; i<num_elem; i++)
-        x[i*incx] *= alpha;
+    for (size_t i = 0; i < num_elem; i++)
+        x[i * incx] *= alpha;
 }
 
 // Copies a vector y := x. (?copy)
-void icopy(const unsigned int num_elem, const int* x,
-           const unsigned int incx, int* y,
-           const unsigned int incy)
-{
-    if (x==NULL || y==NULL)
+static void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
+           int *y, const unsigned int incy) {
+    if (x == NULL || y == NULL)
         return;
 
-    if (incx==0 || incy==0)
+    if (incx == 0 || incy == 0)
         return;
-    
-    for (size_t i=0; i<num_elem; i++)
-        y[i*incy] = x[i*incx];
+
+    for (size_t i = 0; i < num_elem; i++)
+        y[i * incy] = x[i * incx];
 }
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
-void iaxpy(const unsigned int num_elem, const int alpha,
-           const int* x, const unsigned int incx,
-           int* y, const unsigned int incy)
-{
-    if (x==NULL || y==NULL)
+static void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
+           const unsigned int incx, int *y, const unsigned int incy) {
+    if (x == NULL || y == NULL)
         return;
 
-    if (incx==0 || incy==0)
+    if (incx == 0 || incy == 0)
         return;
 
-    for (size_t i=0; i<num_elem; i++)
-        y[i*incy] += alpha * x[i*incx];
+    for (size_t i = 0; i < num_elem; i++)
+        y[i * incy] += alpha * x[i * incx];
 }
 
 // General dense matrix multiplication for integer matrices. (?gemm)
@@ -82,1088 +436,288 @@ void iaxpy(const unsigned int num_elem, const int alpha,
 // (e.g. "https://www.intel.com/content/www/us/en
 // /docs/onemkl/developer-reference-c/2023-1/cblas-gemm
 // -001.html#GUID-97718E5C-6E0A-44F0-B2B1-A551F0F164B2")
-void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb, 
-        const unsigned int m, const unsigned int n, const unsigned int k, 
-        const int alpha, const int* a, const unsigned int lda, 
-        const int* b, const unsigned int ldb,
-        const int beta, int* c, const unsigned int ldc)
-{
-    int* a_trans = NULL;
-    int* b_trans = NULL;
+static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+           const unsigned int m, const unsigned int n, const unsigned int k,
+           const int alpha, const int *a, const unsigned int lda, const int *b,
+           const unsigned int ldb, const int beta, int *c,
+           const unsigned int ldc) {
+    int *a_trans = NULL;
+    int *b_trans = NULL;
     unsigned int min_lda, min_ldb, min_ldc;
-    bool a_transpose_p = transa==CblasTrans;
-    bool b_transpose_p = transb==CblasTrans;
+    bool a_is_transposed = (transa == CblasTrans);
+    bool b_is_transposed = (transb == CblasTrans);
 
     // Validation
-    if (a==NULL || b==NULL || c==NULL)
-    {
+    if (a == NULL || b == NULL || c == NULL) {
         perror("ERROR! One of the matrices is a null pointer.");
         return;
     }
-    if ((transa==CblasConjTrans || transa==CblasConjNoTrans) ||
-        (transb==CblasConjTrans || transb==CblasConjNoTrans))
-    {
-        perror("ERROR! Conjugate matrices not supported.");
+    if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||
+        (transb == CblasConjTrans || transb == CblasConjNoTrans)) {
+        perror("ERROR! Conjugate transpose is not supported for integer GEMM.");
         return;
     }
-    if (a_transpose_p)
-        min_lda = m > 1? m: 1;
-    else
-        min_lda = k > 1? k: 1;
-    if (lda!=min_lda)
-    {
-        perror("ERROR! Invalid LDA.");
+    if (a_is_transposed) {
+        min_lda = m > 1 ? m : 1;
+    } else {
+        min_lda = k > 1 ? k : 1;
+    }
+    if (lda != min_lda) {
+        perror("ERROR! Invalid LDA (leading dimension of A).");
         return;
     }
-    if (b_transpose_p)
-        min_ldb = k > 1? k: 1;
-    else
-        min_ldb = n > 1? n: 1;
-    if (ldb!=min_ldb)
-    {
-        perror("ERROR! Invalid LDB.");
+    if (b_is_transposed) {
+        min_ldb = k > 1 ? k : 1;
+    } else {
+        min_ldb = n > 1 ? n : 1;
+    }
+    if (ldb != min_ldb) {
+        perror("ERROR! Invalid LDB (leading dimension of B).");
         return;
     }
-    min_ldc = n > 1? n: 1;
-    if (ldc!=min_ldc)
-    {
-        perror("ERROR! Invalid LDC.");
+    min_ldc = n > 1 ? n : 1;
+    if (ldc != min_ldc) {
+        perror("ERROR! Invalid LDC (leading dimension of C).");
         return;
     }
 
     // Quick return
-    if (alpha==0 && beta==1)
-        return;
-    if (alpha==0)
-    {
-        for (size_t i=0; i<ldc*m; i++)
-            c[i] *= beta;
+    if (m == 0 || n == 0 || ((alpha == 0 || k == 0) && beta == 1)) {
         return;
     }
 
-    // Transpositions
-    if (a_transpose_p)
-    {
-        a_trans = (int *)calloc(m*k, sizeof(int));
-        for (size_t i=0; i<m; i++)
-            for (size_t j=0; j<k; j++)
-                a_trans[i*k+j] = a[j*lda+i];
-    }
-    if (b_transpose_p)
-    {
-        b_trans = (int *)calloc(n*k, sizeof(int));
-        for (size_t i=0; i<k; i++)
-            for (size_t j=0; j<n; j++)
-                b_trans[i*n+j] = b[j*ldb+i];
-    }
-    
-    // Matrix multiply
-    if (a_transpose_p && !b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a_trans[i*k+l] * b[l*ldb+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else if (!a_transpose_p && b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a[i*lda+l] * b_trans[l*n+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else if (a_transpose_p && b_transpose_p)
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                    c[i*ldc+j] += alpha * a_trans[i*k+l] * b_trans[l*n+j] +\
-                                            beta * c[i*ldc+j];
-    }
-    else
-    {
-        for (size_t i=0; i<m; ++i)
-            for (size_t j=0; j<n; ++j)
-                for (size_t l=0; l<k; ++l)
-                {
-                    c[i*ldc+j] += alpha * a[i*lda+l] * b[l*ldb+j] +\
-                                            beta * c[i*ldc+j];
-                }
+    // Scale C by beta
+    for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            c[i * ldc + j] *= beta;
+        }
     }
 
-    // Free transposed matrices
-    if (a_transpose_p)
-        free(a_trans);
-    if (b_transpose_p)
-        free(b_trans);
+    if (alpha == 0 || k == 0) {
+        return;
+    }
+
+    // Do C += alpha * op(A) * op(B)
+    for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            int dot_prod = 0;
+            for (size_t l = 0; l < k; ++l) {
+                int a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];
+                int b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];
+                dot_prod += a_val * b_val;
+            }
+            c[i * ldc + j] += alpha * dot_prod;
+        }
+    }
 }
 
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices.
-void iusga(const unsigned int num_elem,
-           const int* y, const unsigned int incy,
-           int* x, const unsigned int* idxs)
-{
-    if (x==NULL || y==NULL || idxs==NULL)
-    {
+static void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
+           int *x, const unsigned int *idxs) {
+    if (x == NULL || y == NULL || idxs == NULL) {
         perror("ERROR! Null pointer in array argument(s).");
         return;
     }
-    for (size_t i=0; i<num_elem; i++)
-        x[i] = y[idxs[i*incy]];
+    for (size_t i = 0; i < num_elem; i++) {
+        x[i] = y[idxs[i * incy]];
+    }
 }
 
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices. Double precision arrays supported.
-void dusga(const unsigned int num_elem,
-           const double* y, const unsigned int incy,
-           double* x, const unsigned int* idxs)
-{
-    if (x==NULL || y==NULL || idxs==NULL)
-    {
+static void dusga(const unsigned int num_elem, const double *y,
+           const unsigned int incy, double *x, const unsigned int *idxs) {
+    if (x == NULL || y == NULL || idxs == NULL) {
         perror("ERROR! Null pointer in array argument(s).");
         return;
     }
-    for (size_t i=0; i<num_elem; i++)
-        x[i] = y[idxs[i*incy]];
+    for (size_t i = 0; i < num_elem; i++) {
+        x[i] = y[idxs[i * incy]];
+    }
+}
+
+// Wrapper function for cblas_dgemm
+void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+           const unsigned int m, const unsigned int n, const unsigned int k,
+           const double alpha, const double *a, const unsigned int lda, const double *b,
+           const unsigned int ldb, const double beta, double *c,
+           const unsigned int ldc) {
+    cblas_dgemm(CblasRowMajor, transa, transb,
+                m, n, k,
+                alpha, a, lda,
+                b, ldb, beta,
+                c, ldc);
 }
 
 /************************************************************************/
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
 
-// Create a matrix
-IntMatrix intmat_create(int nrows, int ncols)
-{
-    IntMatrix matrix;
-    matrix.nrows = (unsigned int)nrows; 
-    matrix.ncols = (unsigned int)ncols;
+DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
+DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
+DEFINE_MATRIX_COPY_INPLACE(intmat_copy_inplace, IntMatrix, icopy)
+DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
+DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
+DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
+DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create)
+DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
+DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
+DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_MUL_INPLACE(intmat_mul_inplace, IntMatrix, int, igemm, intmat_fill)
+DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, intmat_create, intmat_mul_inplace)
+DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
+DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
-    if (nrows<=0 || ncols<=0)
-    {
-        perror("ERROR: Number of rows/columns cannot be <= 0.");
-        matrix.data = NULL;
-        return matrix;
-    }
-    
-    matrix.data = (int *)calloc(matrix.nrows * matrix.ncols, 
-                                   sizeof(int));
-
-    return matrix;
-}
-
-// Print a matrix
-void intmat_print(const IntMatrix* mat)
-{
-    if (mat==NULL)
-        return;
-    if (mat->data==NULL)
-        return;
-
-    for (size_t i=0; i<mat->nrows; i++)
-    {
-        for (size_t j=0; j<mat->ncols; j++)
-            printf("%d ", mat->data[i*mat->ncols+j]);
-        printf("\n");
-    }
-}
-
-// Fill a matrix with a single value
-void intmat_fill(IntMatrix* mat, int value)
-{
-    if (mat==NULL)
-        return;
-    if (mat->data==NULL)
-        return;
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-            mat->data[i*mat->ncols+j] = value;
-}
+DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
+DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
+DEFINE_MATRIX_COPY_INPLACE(mat_copy_inplace, Matrix, cblas_dcopy)
+DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
+DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
+DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_MUL_INPLACE(mat_mul_inplace, Matrix, double, double_gemm_wrapper, mat_fill)
+DEFINE_MATRIX_MUL(mat_mul, Matrix, mat_create, mat_mul_inplace)
+DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
+DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
-void intmat_fill_random(IntMatrix* mat, 
-                    int low, int high, bool replace, unsigned int seed)
-{
-    int* temp_ints = NULL;
+void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
+                        unsigned int seed) {
+    int *temp_ints = NULL;
 
     srand(seed);
 
-    if (low>=high)
-    {
+    if (low >= high) {
         perror("ERROR: low >= high.");
         intmat_destroy(mat);
         return;
     }
-    
+
     // Random numbers with replacement
-    if (replace)
-    {
-        for (size_t i=0; i<mat->nrows; i++)
-            for (size_t j=0; j<mat->ncols; j++)
-                mat->data[i*mat->ncols+j] = low + rand()%(high - low);
+    if (replace) {
+        for (size_t i = 0; i < mat->nrows; i++)
+            for (size_t j = 0; j < mat->ncols; j++)
+                mat->data[i * mat->ncols + j] = low + rand() % (high - low);
         return;
     }
 
-    if (mat->nrows*mat->ncols > (size_t)(high-low))
-    {
+    if (mat->nrows * mat->ncols > (size_t)(high - low)) {
         perror("ERROR: Too many numbers to generate without replacement.");
         intmat_destroy(mat);
         return;
     }
-    
+
     // Random numbers without replacement
     // 1. Generate numbers from low to high (exclusive) and store in arr.
     // 2. Shuffle arr (e.g. using Fisher-Yates).
     // 3. Select first nrows * ncols numbers.
-    temp_ints = (int *)calloc(high-low, sizeof(int));
-    for (int i=low; i<high; i++)
-        temp_ints[i-low] = i;
-    for (size_t i=high-low-1; i>0; i--)
-    {
-        int idx = rand()%i;
+    temp_ints = (int *)calloc(high - low, sizeof(int));
+    for (int i = low; i < high; i++)
+        temp_ints[i - low] = i;
+    for (size_t i = high - low - 1; i > 0; i--) {
+        int idx = rand() % i;
         int temp = temp_ints[idx];
         temp_ints[idx] = temp_ints[i];
         temp_ints[i] = temp;
     }
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-            mat->data[i*mat->ncols+j] = temp_ints[i*mat->ncols+j];
+    for (size_t i = 0; i < mat->nrows; i++)
+        for (size_t j = 0; j < mat->ncols; j++)
+            mat->data[i * mat->ncols + j] = temp_ints[i * mat->ncols + j];
     free(temp_ints);
-}
-
-// Copy a matrix
-IntMatrix intmat_copy(IntMatrix* mat)
-{
-    IntMatrix copy = intmat_create(mat->nrows, mat->ncols);
-    icopy(mat->nrows*mat->ncols, mat->data,
-                1, copy.data, 1);
-    return copy;
-}
-
-// Copy a matrix inplace
-void intmat_copy_inplace(IntMatrix* mat, IntMatrix* copy)
-{
-    // Check dimensions
-    if (mat->nrows!=copy->nrows || mat->ncols!=copy->ncols)
-    {
-        perror("ERROR: copy and original matrix must have same dimensions.");
-        intmat_destroy(mat);
-        return;
-    }
-    icopy(mat->nrows*mat->ncols, mat->data,
-                1, copy->data, 1);
-}
-
-// Create a row (1)/column (0) vector (according to specified 
-// dimension) with elements from "low" to "high" 
-// (excluded) in "step" steps.
-IntMatrix intmat_range(int low,
-                  int high,
-                  unsigned int step,
-                  unsigned int dimension)
-{
-    IntMatrix out;
-    bool err = false;
-    unsigned int n_elem;
-
-    if (high<=low)
-    {
-        perror("Upper limit cannot be <= lower limit.");
-        err = true;
-    }
-    if (step==0)
-    {
-        perror("Step cannot be zero.");
-        err = true;
-    }
-
-    n_elem = (high - low)/step;
-    
-    switch (dimension)
-    {
-        case 0:
-            out = intmat_create(n_elem, 1);
-            break;
-        case 1:
-            out = intmat_create(1, n_elem);
-            break;
-        default:
-            perror("Dimension must be either 0 or 1.");
-            err = true;
-            break;
-    }
-
-    if (err)
-    {
-        intmat_destroy(&out);
-        return out;
-    }
-
-    for (int i=low; i<high; i+=step)
-        out.data[(i-low)/step] = i;
-
-    return out;
-}
-
-// Scale a matrix by a scalar
-void intmat_scale(IntMatrix* mat, int fac)
-{
-    iscal(mat->nrows*mat->ncols, fac,
-          mat->data, 1);
-}
-
-// Add two matrices
-// Addition is performed as A := A+B
-void intmat_add(IntMatrix* intmat_a, IntMatrix* intmat_b)
-{
-    // Ensure that both vectors are of same length
-    if (intmat_a->nrows!=intmat_b->nrows || intmat_a->ncols!=intmat_b->ncols)
-    {
-        perror("ERROR: matrices A and B must be of same dimension.");
-        intmat_destroy(intmat_a);
-        return;
-    }
-
-    iaxpy(intmat_b->nrows * intmat_b->ncols, 1, 
-          intmat_b->data, 1, intmat_a->data, 1);
-}
-
-// Subtract two matrices
-// Subtraction is performed as A := A - B
-void intmat_sub(IntMatrix* intmat_a, IntMatrix* intmat_b)
-{
-    IntMatrix copy = intmat_copy(intmat_b);
-    intmat_scale(&copy, -1);
-    intmat_add(intmat_a, &copy);
-    intmat_destroy(&copy);
-}
-
-// Add a scalar to a matrix
-void intmat_add_scalar(IntMatrix* mat, int scalar)
-{
-    IntMatrix temp = intmat_create(mat->nrows, mat->ncols);
-    intmat_fill(&temp, scalar);
-    intmat_add(mat, &temp);
-    intmat_destroy(&temp);
-}
-
-// Multiply two matrices A and B. Matrices are multiplied
-// after transforming them. IntMatrix dimensions must be such that
-//     dim(transform(A)) = m x k
-//     dim(transform(B)) = k' x n
-IntMatrix intmat_mul(IntMatrix* intmat_a, 
-               bool transpose_a, 
-               IntMatrix* intmat_b,
-               bool transpose_b)
-{
-    unsigned int lda, ldb;
-    unsigned int m, n, k, k_prime;
-
-    IntMatrix result;
-    int alpha = 1, beta = 0;
-    
-    CBLAS_TRANSPOSE trans_a = transpose_a? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b? CblasTrans : CblasNoTrans;
-    
-    m = transpose_a? intmat_a->ncols: intmat_a->nrows;
-    k = transpose_a? intmat_a->nrows: intmat_a->ncols;
-    k_prime = transpose_b? intmat_b->ncols: intmat_b->nrows;
-    n = transpose_b? intmat_b->nrows: intmat_b->ncols;
-    
-    // Ensure correct dimensions for matrix multiplication
-    if (k!=k_prime)
-    {
-        result.data = NULL;
-        perror("ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m x k and k' x n matrices.");
-        return result;
-    }
-    
-    result = intmat_create(m, n);
-    intmat_fill(&result, 0);
-
-    lda = transpose_a? m: k;
-    ldb = transpose_b? k: n;
-    
-    igemm(trans_a, trans_b,
-          m, n, k,
-          alpha, intmat_a->data, lda,
-          intmat_b->data, ldb, beta,
-          result.data, n);
-    return result;
-}
-
-// Multiply two matrices and store result in place
-void intmat_mul_inplace(IntMatrix* intmat_a, 
-                 bool transpose_a, 
-                 IntMatrix* intmat_b,
-                 bool transpose_b,
-                 IntMatrix* result)
-{
-    unsigned int m, n, k, k_prime;
-    unsigned int lda, ldb;
-    int alpha = 1, beta = 0;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b? CblasTrans : CblasNoTrans;
-
-    m = transpose_a? intmat_a->ncols: intmat_a->nrows;
-    k = transpose_a? intmat_a->nrows: intmat_a->ncols;
-    k_prime = transpose_b? intmat_b->ncols: intmat_b->nrows;
-    n = transpose_b? intmat_b->nrows: intmat_b->ncols;
-    
-    // Ensure correct dimensions for matrix multiplication
-    if (k!=k_prime)
-    {
-        perror("ERROR: IntMatrix dimensions must satisfy k = k' for multiplying m x k and k' x n matrices.");
-        intmat_destroy(result);
-        return;
-    }
-    if (result->nrows!=m || result->ncols!=n)
-    {
-        perror("ERROR: Incorrect dimensions of result matrix.");
-        intmat_destroy(result);
-        return;
-    }
-    
-    intmat_fill(result, 0);
-
-    lda = transpose_a? m: k;
-    ldb = transpose_b? k: n;
-    
-    igemm(trans_a, trans_b,
-          m, n, k,
-          alpha, intmat_a->data, lda,
-          intmat_b->data, ldb, beta,
-          result->data, n);
-}
-
-// Repeat a vector along a given dimension
-IntMatrix intmat_repeat(IntMatrix* vec, 
-        unsigned int dimension, unsigned int repeats)
-{
-    IntMatrix repeated;
-    unsigned int nidx, idx_fac, inc;
-    bool err = false;
-
-    // Check if vec is a vector
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Only a one dimensional vector can be repeated.");
-        intmat_destroy(&repeated);
-        return repeated;
-    }
-    
-    switch (dimension)
-    {
-        case 0:
-            if (vec->nrows!=1)
-            {
-                perror("ERROR: Can only repeat a row vector along rows.");
-                err = true;
-            }
-            nidx = vec->ncols;
-            idx_fac = vec->ncols;
-            inc = 1;
-            repeated = intmat_create(repeats, vec->ncols);
-            break;
-        case 1:
-            if (vec->ncols!=1)
-            {
-                perror("ERROR: Can only repeat a column vector along rows.");
-                err = true;
-            }
-            nidx = vec->nrows;
-            idx_fac = 1;
-            inc = repeats;
-            repeated = intmat_create(vec->nrows, repeats);
-            break;
-        default:
-            perror("ERROR: Dimension must be either 0 or 1.\n");
-            err = true;
-            break;
-    }
-    if (err)
-    {
-        intmat_destroy(&repeated);
-        return repeated;
-    }
-    
-    for (size_t i=0; i<repeats; i++)
-        icopy(nidx, vec->data, 1, &(repeated.data[idx_fac*i]), inc);
-
-    return repeated;
-}
-
-// Add a vector to a matrix
-// Addition is done as: A := A + B
-// where vector B is repeated along the number
-// of dimensions as required to match A's dimensions.
-void intmat_vec_add(IntMatrix* mat, IntMatrix* vec)
-{
-    IntMatrix repeated;
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Second argument must be a vector.");
-        intmat_destroy(mat);
-        return;
-    }
-    if (vec->nrows==1)
-        repeated = intmat_repeat(vec, 0, mat->nrows);
-    else
-        repeated = intmat_repeat(vec, 1, mat->ncols);
-    intmat_add(mat, &repeated);
-    intmat_destroy(&repeated);
-}
-
-// Subtract a vector from a matrix
-// Subtraction is done as: A := A - B
-// where vector B is repeated along the number
-// of dimensions as required to match A's dimensions.
-void intmat_vec_sub(IntMatrix* mat, IntMatrix* vec)
-{
-    IntMatrix repeated;
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Second argument must be a vector.");
-        intmat_destroy(mat);
-        return;
-    }
-    if (vec->nrows==1)
-        repeated = intmat_repeat(vec, 0, mat->nrows);
-    else
-        repeated = intmat_repeat(vec, 1, mat->ncols);
-    intmat_sub(mat, &repeated);
-    intmat_destroy(&repeated);
-}
-
-// Gather rows/columns from "from" and store in
-// "to" according to specified indices.
-void intmat_gather(IntMatrix* from,
-                IntMatrix* to,
-                IntMatrix* indices,
-                unsigned int dimension)
-{
-    IntMatrix idxs, idxs_repeated, ind_arg_cpy;
-    switch (dimension)
-    {
-        case 0:
-            idxs = intmat_range(0, from->ncols, 1, 1);
-            idxs_repeated = intmat_repeat(&idxs, 0, 
-                                    indices->nrows);
-            ind_arg_cpy = intmat_copy(indices);
-            intmat_scale(&ind_arg_cpy, from->ncols); 
-            intmat_vec_add(&idxs_repeated, &ind_arg_cpy);
-            break;
-        case 1:
-            idxs = intmat_range(0, from->nrows, 1, 0);
-            intmat_scale(&idxs, from->ncols);
-            idxs_repeated = intmat_repeat(&idxs, 1,
-                                indices->ncols);
-            intmat_vec_add(&idxs_repeated, indices);
-            break;
-        default:
-            perror("Dimension must be either rows(0) or columns(1).");
-            intmat_destroy(to);
-            return;
-    }
-    iusga(idxs_repeated.nrows*idxs_repeated.ncols, from->data,
-             1, to->data, (unsigned int*)idxs_repeated.data);
-    intmat_destroy(&ind_arg_cpy);
-    intmat_destroy(&idxs);
-    intmat_destroy(&idxs_repeated);
-}
-
-// Destroy a matrix
-void intmat_destroy(IntMatrix* matrix)
-{
-    if (matrix==NULL)
-        return;
-    if ((matrix->data)!=NULL)
-        free(matrix->data);
-    matrix->data = NULL;
 }
 
 /************************************************************************/
 /***************Functions for Matrix (double precision data)*************/
 /************************************************************************/
 
-// Create a matrix
-Matrix mat_create(int nrows, int ncols)
-{
-    Matrix matrix;
-    matrix.nrows = (unsigned int)nrows; 
-    matrix.ncols = (unsigned int)ncols;
-
-    if (nrows<=0 || ncols<=0)
-    {
-        perror("ERROR: Number of rows/columns cannot be <= 0.");
-        matrix.data = NULL;
-        return matrix;
-    }
-    
-    matrix.data = (double *)calloc(matrix.nrows * matrix.ncols, 
-                                   sizeof(double));
-
-    return matrix;
-}
-
-// Print a matrix
-void mat_print(const Matrix* mat)
-{
-    if (mat==NULL)
-        return;
-    if (mat->data==NULL)
-        return;
-
-    for (size_t i=0; i<mat->nrows; i++)
-    {
-        for (size_t j=0; j<mat->ncols; j++)
-            printf("%.4f ", mat->data[i*mat->ncols+j]);
-        printf("\n");
-    }
-}
-
-// Fill a matrix with a single value
-void mat_fill(Matrix* mat, double value)
-{
-    if (mat==NULL)
-        return;
-    if (mat->data==NULL)
-        return;
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-            mat->data[i*mat->ncols+j] = value;
-}
-
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
-void mat_fill_random(Matrix* mat, unsigned int seed)
-{
+void mat_fill_random(Matrix *mat, unsigned int seed) {
     srand(seed);
 
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-            mat->data[i*mat->ncols+j] = (double)rand()/(double)(RAND_MAX);
+    for (size_t i = 0; i < mat->nrows; i++)
+        for (size_t j = 0; j < mat->ncols; j++)
+            mat->data[i * mat->ncols + j] = (double)rand() / (double)(RAND_MAX);
 }
 
-// Fill a matrix with random numbers from a Gaussian distribution 
-// with mean "mean" and standard deviation "std"
-void mat_fill_random_gaussian(Matrix* mat,
-                              Matrix* means,
-                              Matrix* stds,
-                              unsigned int seed)
-{
-    double x;
-
+// Fill a matrix with random numbers from a Gaussian distribution
+// with mean "mean" and standard deviation "std", using the Box-Muller
+// transform (https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform)
+void mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
+                              unsigned int seed) {
     srand(seed);
 
-    if (mat==NULL || means==NULL || stds==NULL)
-    {
+    if (mat == NULL || means == NULL || stds == NULL) {
         perror("ERROR: Null values in argument matrices.");
         return;
     }
 
-    if (means->nrows!=mat->ncols || stds->nrows!=mat->ncols 
-            || means->ncols!=1 || stds->ncols!=1)
-    {
+    if (means->nrows != mat->ncols || stds->nrows != mat->ncols ||
+        means->ncols != 1 || stds->ncols != 1) {
         perror("ERROR: Means/Stddevs matrix is of improper dimensions.");
         mat_destroy(mat);
         return;
     }
 
-    for (size_t i=0; i<mat->nrows; i++)
-        for (size_t j=0; j<mat->ncols; j++)
-        {
+    const double two_pi = 2.0 * M_PI;
+    double u_1, u_2, mag;
+
+    for (size_t i = 0; i < mat->nrows; i++) {
+        for (size_t j = 0; j < mat->ncols; j++) {
             double mean = means->data[j];
             double std = stds->data[j];
 
-            if (std==0.0)
-            {
+            if (std == 0.0) {
                 perror("ERROR: Standard deviation cannot be zero.");
                 mat_destroy(mat);
                 return;
             }
 
-            x = (double)rand()/(double)(RAND_MAX);
-            mat->data[i*mat->ncols+j] = exp(-0.5*((x-mean)/std)*((x-mean)/std))\
-                                        / (std * sqrt(2*M_PI));
+            // Use Box-Muller transform to generate the random number
+            // from a standard normal distribution
+            do {
+                u_1 = (double)rand() / (double)(RAND_MAX);
+            } while (u_1 == 0.0);
+
+            u_2 = (double)rand() / (double)(RAND_MAX);
+
+            mag = std * sqrt(-2.0 * log(u_1));
+
+            mat->data[i * mat->ncols + j] =
+                rand() % 2 ? mag * cos(two_pi * u_2) + mean
+                           : mag * sin(two_pi * u_2) + mean;
         }
-}
-
-// Copy a matrix
-Matrix mat_copy(Matrix* mat)
-{
-    Matrix copy = mat_create(mat->nrows, mat->ncols);
-    cblas_dcopy(mat->nrows*mat->ncols, mat->data,
-                1, copy.data, 1);
-    return copy;
-}
-
-// Copy a matrix inplace
-void mat_copy_inplace(Matrix* mat, Matrix* copy)
-{
-    // Check dimensions
-    if (mat->nrows!=copy->nrows || mat->ncols!=copy->ncols)
-    {
-        perror("ERROR: copy and original matrix must have same dimensions.");
-        mat_destroy(mat);
-        return;
     }
-    cblas_dcopy(mat->nrows*mat->ncols, mat->data,
-                1, copy->data, 1);
 }
 
 // Sum of absolute values of matrix elements
-double mat_abs_sum(Matrix* mat)
-{
-    if (mat==NULL)
+double mat_abs_sum(Matrix *mat) {
+    if (mat == NULL)
         return 0.0;
 
     double sum = 0.0;
-    sum = cblas_dasum(mat->nrows*mat->ncols, mat->data, 1);
+    sum = cblas_dasum(mat->nrows * mat->ncols, mat->data, 1);
     return sum;
 }
 
-// Euclidean norm of a matrix across all rows and 
-// columns. 
-double mat_norm(Matrix* mat)
-{
-    if (mat==NULL)
-    {
+// Euclidean norm of a matrix across all rows and
+// columns.
+double mat_norm(Matrix *mat) {
+    if (mat == NULL) {
         perror("ERROR: Null pointer in argument matrix.");
         return 0.0;
     }
-    return cblas_dnrm2(mat->nrows*mat->ncols, 
-                        mat->data, 1);
-}
-
-// Create a row (1)/column (0) vector (according to specified 
-// dimension) with elements from "low" to "high" 
-// (excluded) in "step" steps.
-Matrix mat_range(double low,
-                  double high,
-                  double step,
-                  unsigned int dimension)
-{
-    Matrix out;
-    bool err = false;
-    unsigned int n_elem;
-
-    if (high<=low)
-    {
-        perror("Upper limit cannot be <= lower limit.");
-        err = true;
-    }
-    if (step<=0)
-    {
-        perror("Step cannot be zero or negative.");
-        err = true;
-    }
-
-    n_elem = (int)((high - low)/step);
-    
-    switch (dimension)
-    {
-        case 0:
-            out = mat_create(n_elem, 1);
-            break;
-        case 1:
-            out = mat_create(1, n_elem);
-            break;
-        default:
-            perror("Dimension must be either 0 or 1.");
-            err = true;
-            break;
-    }
-
-    if (err)
-    {
-        mat_destroy(&out);
-        return out;
-    }
-
-    for (int i=low; i<high; i+=step)
-        out.data[(int)((i-low)/step)] = (double)i;
-
-    return out;
-}
-
-// Scale a matrix by a scalar
-void mat_scale(Matrix* mat, double fac)
-{
-    cblas_dscal(mat->nrows*mat->ncols, fac,
-                mat->data, 1);
-}
-
-// Add a scalar to a matrix
-void mat_add_scalar(Matrix* mat, double scalar)
-{
-    Matrix temp = mat_create(mat->nrows, mat->ncols);
-    mat_fill(&temp, scalar);
-    mat_add(mat, &temp);
-    mat_destroy(&temp);
-}
-
-// Multiply two matrices A and B. Matrices are multiplied
-// after transforming them. Matrix dimensions must be such that
-//     dim(transform(A)) = m x k
-//     dim(transform(B)) = k' x n
-Matrix mat_mul(Matrix* mat_a, 
-               bool transpose_a, 
-               Matrix* mat_b,
-               bool transpose_b)
-{
-    unsigned int lda, ldb;
-    unsigned int m, n, k, k_prime;
-
-    Matrix result;
-    
-    CBLAS_TRANSPOSE trans_a = transpose_a? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b? CblasTrans : CblasNoTrans;
-    
-    m = transpose_a? mat_a->ncols: mat_a->nrows;
-    k = transpose_a? mat_a->nrows: mat_a->ncols;
-    k_prime = transpose_b? mat_b->ncols: mat_b->nrows;
-    n = transpose_b? mat_b->nrows: mat_b->ncols;
-    
-    // Ensure correct dimensions for matrix multiplication
-    if (k!=k_prime)
-    {
-        result.data = NULL;
-        perror("ERROR: Matrix dimensions must satisfy k = k' for multiplying m x k and k' x n matrices.");
-        return result;
-    }
-    
-    result = mat_create(m, n);
-    mat_fill(&result, 0.0);
-
-    lda = transpose_a? m: k;
-    ldb = transpose_b? k: n;
-    
-    cblas_dgemm(CblasRowMajor, trans_a, trans_b,
-                m, n, k,
-                1.0, mat_a->data, lda,
-                mat_b->data, ldb, 0.0,
-                result.data, n);
-    return result;
-}
-
-// Multiply two matrices and store result in place
-void mat_mul_inplace(Matrix* mat_a, 
-                 bool transpose_a, 
-                 Matrix* mat_b,
-                 bool transpose_b,
-                 Matrix* result)
-{
-    unsigned int m, n, k, k_prime;
-    unsigned int lda, ldb;
-
-    CBLAS_TRANSPOSE trans_a = transpose_a? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE trans_b = transpose_b? CblasTrans : CblasNoTrans;
-
-    m = transpose_a? mat_a->ncols: mat_a->nrows;
-    k = transpose_a? mat_a->nrows: mat_a->ncols;
-    k_prime = transpose_b? mat_b->ncols: mat_b->nrows;
-    n = transpose_b? mat_b->nrows: mat_b->ncols;
-    
-    // Ensure correct dimensions for matrix multiplication
-    if (k!=k_prime)
-    {
-        perror("ERROR: Matrix dimensions must satisfy k = k' for multiplying m x k and k' x n matrices.");
-        mat_destroy(result);
-        return;
-    }
-    if (result->nrows!=m || result->ncols!=n)
-    {
-        perror("ERROR: Incorrect dimensions of result matrix.");
-        mat_destroy(result);
-        return;
-    }
-    
-    mat_fill(result, 0.0);
-
-    lda = transpose_a? m: k;
-    ldb = transpose_b? k: n;
-    
-    cblas_dgemm(CblasRowMajor, trans_a, trans_b,
-                m, n, k,
-                1.0, mat_a->data, lda,
-                mat_b->data, ldb, 0.0,
-                result->data, n);
-}
-
-// Add two matrices
-// Addition is performed as A := A+B
-void mat_add(Matrix* mat_a, Matrix* mat_b)
-{
-    // Ensure that both vectors are of same length
-    if (mat_a->nrows!=mat_b->nrows || mat_a->ncols!=mat_b->ncols)
-    {
-        perror("ERROR: matrices A and B must be of same dimension.");
-        mat_destroy(mat_a);
-        return;
-    }
-
-    cblas_daxpy(mat_b->nrows * mat_b->ncols, 1.0, 
-                mat_b->data, 1, mat_a->data, 1);
-}
-
-// Subtract two matrices
-// Subtraction is performed as A := A - B
-void mat_sub(Matrix* mat_a, Matrix* mat_b)
-{
-    Matrix copy = mat_copy(mat_b);
-    mat_scale(&copy, -1.0);
-    mat_add(mat_a, &copy);
-    mat_destroy(&copy);
-}
-
-// Repeat a vector along a given dimension
-Matrix mat_repeat(Matrix* vec, unsigned int dimension, unsigned int repeats)
-{
-    Matrix repeated;
-    unsigned int nidx, idx_fac, inc;
-    bool err = false;
-
-    // Check if vec is a vector
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Only a one dimensional vector can be repeated.");
-        mat_destroy(&repeated);
-        return repeated;
-    }
-    
-    switch (dimension)
-    {
-        case 0:
-            if (vec->nrows!=1)
-            {
-                perror("ERROR: Can only repeat a row vector along rows.");
-                err = true;
-            }
-            nidx = vec->ncols;
-            idx_fac = vec->ncols;
-            inc = 1;
-            repeated = mat_create(repeats, vec->ncols);
-            break;
-        case 1:
-            if (vec->ncols!=1)
-            {
-                perror("ERROR: Can only repeat a column vector along rows.");
-                err = true;
-            }
-            nidx = vec->nrows;
-            idx_fac = 1;
-            inc = repeats;
-            repeated = mat_create(vec->nrows, repeats);
-            break;
-        default:
-            perror("ERROR: Dimension must be either 0 or 1.\n");
-            err = true;
-            break;
-    }
-    if (err)
-    {
-        mat_destroy(&repeated);
-        return repeated;
-    }
-    
-    for (size_t i=0; i<repeats; i++)
-        cblas_dcopy(nidx, vec->data, 1, &(repeated.data[idx_fac*i]), inc);
-
-    return repeated;
-}
-
-// Add a vector to a matrix
-// Addition is done as: A := A + B
-// where vector B is repeated along the number
-// of dimensions as required to match A's dimensions.
-void mat_vec_add(Matrix* mat, Matrix* vec)
-{
-    Matrix repeated;
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Second argument must be a vector.");
-        mat_destroy(mat);
-        return;
-    }
-    if (vec->nrows==1)
-        repeated = mat_repeat(vec, 0, mat->nrows);
-    else
-        repeated = mat_repeat(vec, 1, mat->ncols);
-    mat_add(mat, &repeated);
-    mat_destroy(&repeated);
-}
-
-// Subtract a vector from a matrix
-// Subtraction is done as: A := A - B
-// where vector B is repeated along the number
-// of dimensions as required to match A's dimensions.
-void mat_vec_sub(Matrix* mat, Matrix* vec)
-{
-    Matrix repeated;
-    if (vec->nrows>1 && vec->ncols>1)
-    {
-        perror("ERROR: Second argument must be a vector.");
-        mat_destroy(mat);
-        return;
-    }
-    if (vec->nrows==1)
-        repeated = mat_repeat(vec, 0, mat->nrows);
-    else
-        repeated = mat_repeat(vec, 1, mat->ncols);
-    mat_sub(mat, &repeated);
-    mat_destroy(&repeated);
-}
-
-// Gather rows/columns from "from" and store in
-// "to" according to specified indices.
-void mat_gather(Matrix* from,
-                Matrix* to,
-                IntMatrix* indices,
-                unsigned int dimension)
-{
-    IntMatrix idxs, idxs_repeated, ind_arg_cpy;
-    switch (dimension)
-    {
-        case 0:
-            idxs = intmat_range(0, from->ncols, 1, 1);
-            idxs_repeated = intmat_repeat(&idxs, 0, 
-                                    indices->nrows);
-            ind_arg_cpy = intmat_copy(indices);
-            intmat_scale(&ind_arg_cpy, from->ncols); 
-            intmat_vec_add(&idxs_repeated, &ind_arg_cpy);
-            break;
-        case 1:
-            idxs = intmat_range(0, from->nrows, 1, 0);
-            intmat_scale(&idxs, from->ncols);
-            idxs_repeated = intmat_repeat(&idxs, 1,
-                                indices->ncols);
-            intmat_vec_add(&idxs_repeated, indices);
-            break;
-        default:
-            perror("Dimension must be either rows(0) or columns(1).");
-            mat_destroy(to);
-            return;
-    }
-    dusga(idxs_repeated.nrows*idxs_repeated.ncols, from->data,
-             1, to->data, (const unsigned int*)idxs_repeated.data);
-
-    intmat_destroy(&ind_arg_cpy);
-    intmat_destroy(&idxs);
-    intmat_destroy(&idxs_repeated);
-}
-
-// Destroy a matrix
-void mat_destroy(Matrix* matrix)
-{
-    if (matrix==NULL)
-        return;
-    if ((matrix->data)!=NULL)
-        free(matrix->data);
-    matrix->data = NULL;
+    return cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
 }

@@ -331,16 +331,23 @@ TEST_CASE("Integer matrix operations.", "[matrix]")
 
      SECTION("Multiplying two matrices.")
      {
-         intmat_fill(&mymat, 20);
-         intmat_fill(&mymat2, 1);
+         intmat_fill(&mymat, 21);
+         intmat_fill(&mymat2, 3);
+         intmat_fill(&mymat3, -5);
          
          IntMatrix result = intmat_mul(&mymat, false, &mymat2, false);
+         IntMatrix result_2 = intmat_mul(&mymat, false, &mymat3, true);
  
          for (size_t i=0; i<result.nrows; i++)
              for (size_t j=0; j<result.ncols; j++)
-                 REQUIRE(result.data[i*result.ncols+j]==400);
+                 REQUIRE(result.data[i*result.ncols+j]==1260);
+
+         for (size_t i=0; i<result_2.nrows; i++)
+             for (size_t j=0; j<result_2.ncols; j++)
+                 REQUIRE(result_2.data[i*result_2.ncols+j]==-2100);
  
          intmat_destroy(&result);
+         intmat_destroy(&result_2);
      }
 
      SECTION("Multiplying two matrices and storing result in place.")

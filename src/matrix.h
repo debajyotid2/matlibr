@@ -39,7 +39,7 @@ typedef struct
 IntMatrix intmat_create(int nrow, int ncol);
 IntMatrix intmat_copy(IntMatrix* mat);
 void intmat_copy_inplace(IntMatrix* mat, IntMatrix* copy);
-IntMatrix intmat_range(int low, int high, unsigned int step,
+IntMatrix intmat_range(int low, int high, int step,
                         unsigned int dimension);
 void intmat_print(const IntMatrix* matrix);
 void intmat_fill(IntMatrix* matrix, int value);
@@ -57,7 +57,7 @@ IntMatrix intmat_repeat(IntMatrix* vec, unsigned int dimension,
                         unsigned int repeats);
 void intmat_vec_add(IntMatrix* mat, IntMatrix* vec);
 void intmat_vec_sub(IntMatrix* mat, IntMatrix* vec);
-void intmat_gather(IntMatrix* from, IntMatrix* to, IntMatrix* indices,
+void intmat_gather(const IntMatrix* from, IntMatrix* to, const IntMatrix* indices,
                    unsigned int dimension);
 void intmat_destroy(IntMatrix* matrix);
 
@@ -86,7 +86,7 @@ void mat_mul_inplace(Matrix* mat_a, bool transpose_a, Matrix* mat_b,
 Matrix mat_repeat(Matrix* vec, unsigned int dimension, unsigned int repeats);
 void mat_vec_add(Matrix* mat, Matrix* vec);
 void mat_vec_sub(Matrix* mat, Matrix* vec);
-void mat_gather(Matrix* from, Matrix* to, IntMatrix* indices,
+void mat_gather(const Matrix* from, Matrix* to, const IntMatrix* indices,
                 unsigned int dimension);
 void mat_destroy(Matrix* matrix);
 
