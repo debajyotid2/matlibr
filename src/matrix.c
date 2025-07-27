@@ -43,7 +43,7 @@ MATRIX_TYPE FUNC_NAME(int nrows, int ncols) {                                   
 
 // Copy a matrix
 #define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)                      \
-MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat) {                                                       \
+MATRIX_TYPE FUNC_NAME(const MATRIX_TYPE *mat) {                                                       \
     MATRIX_TYPE copy = CREATE_FUNC(mat->nrows, mat->ncols);                                     \
     COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy.data, 1);                             \
     return copy;                                                                                \
@@ -51,7 +51,7 @@ MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat) {                                       
 
 // Copy a matrix inplace
 #define DEFINE_MATRIX_COPY_INPLACE(FUNC_NAME, MATRIX_TYPE, COPY_FUNC)                           \
-void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                                           \
+void FUNC_NAME(const MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                                           \
     /* Check dimensions */                                                                      \
     if (mat->nrows != copy->nrows || mat->ncols != copy->ncols) {                               \
         perror("ERROR: copy and original matrix must have same dimensions.");                   \
@@ -62,7 +62,7 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *copy) {                           
 
 // Fill a matrix with a single value
 #define DEFINE_MATRIX_FILL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                   \
-void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                                             \
+void FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {                                             \
     if (mat==NULL || mat->data==NULL) {                                                         \
         return;                                                                                 \
     }                                                                                           \
@@ -74,7 +74,7 @@ void FUNC_NAME(MATRIX_TYPE* mat, DATA_TYPE value) {                             
 
 // Scale a matrix by a scalar
 #define DEFINE_MATRIX_SCALE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, SCALING_FUNC)                    \
-void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE fac) {                                               \
+void FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE fac) {                                               \
     SCALING_FUNC(mat->nrows * mat->ncols, fac, mat->data, 1);                                   \
 }
 
@@ -183,7 +183,7 @@ MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *vec, unsigned int dimension, unsigned int rep
 
 // Add a scalar to a matrix
 #define DEFINE_MATRIX_ADD_SCALAR(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                     \
-void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE scalar) {                                                    \
+void FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {                                                    \
     if (mat == NULL) {                                                                                  \
         return;                                                                                         \
     }                                                                                                   \
@@ -199,7 +199,7 @@ void FUNC_NAME(MATRIX_TYPE *mat, DATA_TYPE scalar) {                            
 // Add two matrices
 // Addition is performed as A := A+B
 #define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
-void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+void FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                                                \
     /* Ensure that both matrices are of same shape */                                                   \
     if (mat_a->nrows != mat_b->nrows ||                                                                 \
         mat_a->ncols != mat_b->ncols) {                                                                 \
@@ -212,7 +212,7 @@ void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                        
 // Subtract two matrices
 // Subtraction is performed as A := A - B
 #define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
-void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                                                \
+void FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                                                \
     /* Ensure that both matrices are of same shape */                                                   \
     if (mat_a->nrows != mat_b->nrows ||                                                                 \
         mat_a->ncols != mat_b->ncols) {                                                                 \
@@ -227,7 +227,7 @@ void FUNC_NAME(MATRIX_TYPE *mat_a, MATRIX_TYPE *mat_b) {                        
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
 #define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
-void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                                                    \
+void FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                                    \
     if (mat==NULL || vec==NULL) {                                                                       \
         perror("ERROR: Got null pointer for matrix or vector.");                                        \
         return;                                                                                         \
@@ -263,7 +263,7 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                            
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
 #define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
-void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                                                    \
+void FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                                    \
     if (mat==NULL || vec==NULL) {                                                                       \
         perror("ERROR: Got null pointer for matrix or vector.");                                        \
         return;                                                                                         \
@@ -299,8 +299,8 @@ void FUNC_NAME(MATRIX_TYPE *mat, MATRIX_TYPE *vec) {                            
 //     dim(transform(A)) = m x k
 //     dim(transform(B)) = k' x n
 #define DEFINE_MATRIX_MUL_INPLACE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)               \
-void FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                                     \
-               MATRIX_TYPE *mat_b, bool transpose_b,                                                     \
+void FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,                                                     \
+               const MATRIX_TYPE *mat_b, bool transpose_b,                                                     \
                MATRIX_TYPE *result) {                                                                    \
     unsigned int m, n, k, k_prime;                                                                       \
     unsigned int lda, ldb;                                                                               \
@@ -331,8 +331,8 @@ void FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                            
 
 // Matrix multiplication. This function calls the "inplace" version under the hood
 #define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, CREATE_FUNC, INPLACE_MATMUL_FUNC)                      \
-MATRIX_TYPE FUNC_NAME(MATRIX_TYPE *mat_a, bool transpose_a,                                              \
-               MATRIX_TYPE *mat_b, bool transpose_b) {                                                   \
+MATRIX_TYPE FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,                                              \
+               const MATRIX_TYPE *mat_b, bool transpose_b) {                                                   \
     unsigned int m, n;                                                                                   \
     m = transpose_a ? mat_a->ncols : mat_a->nrows;                                                       \
     n = transpose_b ? mat_b->nrows : mat_b->ncols;                                                       \
