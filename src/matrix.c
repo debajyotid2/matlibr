@@ -351,15 +351,43 @@ void FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_MATRIX_TYPE *
         perror("ERROR: Got null pointer for matrices or indices.");                                     \
         return;                                                                                         \
     }                                                                                                   \
+    if (indices->ncols != 1) {                                                                          \
+        perror("ERROR: 'indices' must be a row vector.");                                               \
+        return;                                                                                         \
+    }                                                                                                   \
     switch (dimension) {                                                                                \
     case 0:  /* Gather rows */                                                                          \
+        if (to->ncols != from->ncols) {                                                                 \
+            perror("ERROR: 'to' and 'from' matrices must have same number of columns.");                \
+            return;                                                                                     \
+        }                                                                                               \
+        if (to->nrows != indices->nrows) {                                                              \
+            perror("ERROR: 'to' must have the same number of rows as number of indices in 'indices'."); \
+            return;                                                                                     \
+        }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
+            if (indices->data[i] >= from->nrows) {                                                      \
+                perror("ERROR: Row index out of bounds.");                                              \
+                return;                                                                                 \
+            }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
                       &to->data[i*to->ncols], 1);                                                       \
         }                                                                                               \
         break;                                                                                          \
     case 1: /* Gather columns */                                                                        \
-        for (size_t i=0; i<indices->ncols; ++i) {                                                       \
+        if (to->nrows != from->nrows) {                                                                 \
+            perror("ERROR: 'to' and 'from' matrices must have same number of rows.");                   \
+            return;                                                                                     \
+        }                                                                                               \
+        if (to->ncols != indices->nrows) {                                                              \
+            perror("ERROR: 'to' must have the same number of columns as number of indices in 'indices'.");  \
+            return;                                                                                         \
+        }                                                                                                   \
+        for (size_t i=0; i<indices->nrows; ++i) {                                                       \
+            if (indices->data[i] >= from->ncols) {                                                      \
+                perror("ERROR: Column index out of bounds.");                                           \
+                return;                                                                                 \
+            }                                                                                           \
             for (size_t j=0; j<from->nrows; ++j) {                                                      \
                 to->data[j*to->ncols+i] = from->data[j*from->ncols+indices->data[i]];                   \
             }                                                                                           \
