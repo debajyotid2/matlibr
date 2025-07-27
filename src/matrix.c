@@ -661,47 +661,55 @@ DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
-void intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
-                        unsigned int seed) {
+MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
+                                    unsigned int seed) {
     int *temp_ints = NULL;
 
-    srand(seed);
-
     if (low >= high) {
-        perror("ERROR: low >= high.");
-        return;
+        HANDLE_ERROR(MATRIX_ERR_RANGE_INVALID, "low >= high.");
+        return MATRIX_ERR_RANGE_INVALID;
     }
+    
+    srand(seed);
 
     // Random numbers with replacement
     if (replace) {
-        for (size_t i = 0; i < mat->nrows; i++)
-            for (size_t j = 0; j < mat->ncols; j++)
+        for (size_t i = 0; i < mat->nrows; i++) {
+            for (size_t j = 0; j < mat->ncols; j++) {
                 mat->data[i * mat->ncols + j] = low + rand() % (high - low);
-        return;
+            }
+        }
+        return MATRIX_SUCCESS;
     }
 
     if (mat->nrows * mat->ncols > (size_t)(high - low)) {
-        perror("ERROR: Too many numbers to generate without replacement.");
-        return;
+        HANDLE_ERROR(MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE, 
+                     "Too many numbers to generate without replacement.");
+        return MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE;
     }
 
     // Random numbers without replacement
     // 1. Generate numbers from low to high (exclusive) and store in arr.
-    // 2. Shuffle arr (e.g. using Fisher-Yates).
+    // 2. Shuffle arr (e.g. using Fisher-Yates, 
+    //              https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle).
     // 3. Select first nrows * ncols numbers.
     temp_ints = (int *)calloc(high - low, sizeof(int));
-    for (int i = low; i < high; i++)
+    for (int i = low; i < high; i++) {
         temp_ints[i - low] = i;
+    }
     for (size_t i = high - low - 1; i > 0; i--) {
         int idx = rand() % i;
         int temp = temp_ints[idx];
         temp_ints[idx] = temp_ints[i];
         temp_ints[i] = temp;
     }
-    for (size_t i = 0; i < mat->nrows; i++)
-        for (size_t j = 0; j < mat->ncols; j++)
+    for (size_t i = 0; i < mat->nrows; i++) {
+        for (size_t j = 0; j < mat->ncols; j++) {
             mat->data[i * mat->ncols + j] = temp_ints[i * mat->ncols + j];
+        }
+    }
     free(temp_ints);
+    return MATRIX_SUCCESS;
 }
 
 /************************************************************************/

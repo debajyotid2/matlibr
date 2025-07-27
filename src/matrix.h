@@ -41,7 +41,8 @@ typedef enum {
     MATRIX_ERR_INVALID_DIMENSION,
     MATRIX_ERR_RANGE_INVALID,
     MATRIX_ERR_RANGE_INVALID_STEP,
-    MATRIX_ERR_INDEX_OUT_OF_BOUNDS
+    MATRIX_ERR_INDEX_OUT_OF_BOUNDS,
+    MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE
 } MatrixStatusCode;
 
 // Functions for integer matrices
@@ -51,7 +52,7 @@ MatrixStatusCode intmat_range(IntMatrix* mat, int low, int high, int step,
                         unsigned int dimension);
 MatrixStatusCode intmat_print(const IntMatrix* matrix);
 MatrixStatusCode intmat_fill(IntMatrix* matrix, const int value);
-void intmat_fill_random(IntMatrix* matrix, int low, int high, 
+MatrixStatusCode intmat_fill_random(IntMatrix* matrix, int low, int high, 
                     bool replace, unsigned int seed);
 MatrixStatusCode intmat_scale(IntMatrix* mat, const int fac);
 MatrixStatusCode intmat_add_scalar(IntMatrix* mat, const int scalar);
