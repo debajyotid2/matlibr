@@ -21,15 +21,17 @@
 int main() {
     size_t seed = 42;
     int nrow = 10, ncol = 5;
-    Matrix a = mat_create(nrow, ncol);
-    mat_fill_random(&a, seed);
-    Matrix b = mat_copy(&a);
+    Matrix a;
+    mat_create(&a, nrow, ncol);
+    mat_fill_random(&a);
+    Matrix b;
+    mat_copy(&b, &a);
     mat_scale(&b, 2.34);
     
     printf("\n************Matrix addition***************\n");
     printf("A: \n");
     mat_print(&a);
-    printf(" +\n B: \n");
+    printf("\n +\n B: \n");
     mat_print(&b);
     printf(" = \n");
     
