@@ -445,14 +445,16 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
 
 // Destroy a matrix
 #define DEFINE_MATRIX_DESTROY(FUNC_NAME, MATRIX_TYPE)                                               \
-void FUNC_NAME(MATRIX_TYPE *matrix) {                                                               \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                                                   \
     if (matrix == NULL) {                                                                           \
-        return;                                                                                     \
+        HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                \
+        return MATRIX_ERR_NULL_PTR;                                                                 \
     }                                                                                               \
     if ((matrix->data) != NULL) {                                                                   \
         free(matrix->data);                                                                         \
     }                                                                                               \
     matrix->data = NULL;                                                                            \
+    return MATRIX_SUCCESS;                                                                          \
 }
 
 /************************************************************/

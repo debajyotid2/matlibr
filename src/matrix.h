@@ -65,7 +65,7 @@ MatrixStatusCode intmat_vec_add(IntMatrix* mat, const IntMatrix* vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix* mat, const IntMatrix* vec);
 MatrixStatusCode intmat_gather(const IntMatrix* from, IntMatrix* to, const IntMatrix* indices,
                                unsigned int dimension);
-void intmat_destroy(IntMatrix* matrix);
+MatrixStatusCode intmat_destroy(IntMatrix* matrix);
 
 
 // Functions for double matrices
@@ -92,6 +92,6 @@ MatrixStatusCode mat_vec_add(Matrix* mat, const Matrix* vec);
 MatrixStatusCode mat_vec_sub(Matrix* mat, const Matrix* vec);
 MatrixStatusCode mat_gather(const Matrix* from, Matrix* to, const IntMatrix* indices,
                             unsigned int dimension);
-void mat_destroy(Matrix* matrix);
+MatrixStatusCode mat_destroy(Matrix* matrix);
 
 #endif // _MATRIX_H_
