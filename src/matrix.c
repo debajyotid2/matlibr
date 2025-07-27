@@ -25,6 +25,32 @@
 
 #include "matrix.h"
 
+#ifdef _WIN32
+#include <limits.h>
+#endif
+
+// Generate a random integer between 0 and upper_bound
+unsigned int rand_int(unsigned int upper_bound) {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return number % upper_bound;
+#else
+    return arc4random_uniform(upper_bound);
+#endif
+}
+
+// Generate a random double precision number between 0.0 and 1.0
+double rand_double() {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return (double)number / ((double)UINT_MAX + 1);
+#else
+    return drand48();
+#endif
+}
+
 // Function for displaying and handling errors
 static void error_handler(const char *function, int line,
                           MatrixStatusCode status_code, const char *msg) {
@@ -641,7 +667,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
     if (replace) {
         for (size_t i = 0; i < mat->nrows; i++) {
             for (size_t j = 0; j < mat->ncols; j++) {
-                mat->data[i * mat->ncols + j] = low + rand() % (high - low);
+                mat->data[i * mat->ncols + j] = low + rand_int(high-low);
             }
         }
         return MATRIX_SUCCESS;
@@ -665,7 +691,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
         temp_ints[i - low] = i;
     }
     for (size_t i = high - low - 1; i > 0; i--) {
-        int idx = rand() % i;
+        int idx = rand_int(i);
         int temp = temp_ints[idx];
         temp_ints[idx] = temp_ints[i];
         temp_ints[i] = temp;
@@ -708,7 +734,7 @@ MatrixStatusCode mat_fill_random(Matrix *mat) {
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
-            mat->data[i * mat->ncols + j] = (double)rand() / (double)(RAND_MAX);
+            mat->data[i * mat->ncols + j] = rand_double();
         }
     }
     return MATRIX_SUCCESS;
@@ -742,15 +768,15 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
             // Use Box-Muller transform to generate the random number
             // from a standard normal distribution
             do {
-                u_1 = (double)rand() / (double)(RAND_MAX);
+                u_1 = rand_double();
             } while (u_1 == 0.0);
 
-            u_2 = (double)rand() / (double)(RAND_MAX);
+            u_2 = rand_double();
 
             mag = std * sqrt(-2.0 * log(u_1));
 
             mat->data[i * mat->ncols + j] =
-                rand() % 2 ? mag * cos(two_pi * u_2) + mean
+                rand_int(2) ? mag * cos(two_pi * u_2) + mean
                            : mag * sin(two_pi * u_2) + mean;
         }
     }
