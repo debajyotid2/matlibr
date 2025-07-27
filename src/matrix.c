@@ -51,11 +51,16 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {         
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received");                          \
     }                                                                                           \
     if (nrows <= 0 || ncols <= 0) {                                                             \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Number of rows/columns cannot be <= 0.");\
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION,                                           \
+                        "Number of rows/columns cannot be <= 0.");                              \
     }                                                                                           \
-    matrix->nrows = (unsigned int)nrows;                                                        \
-    matrix->ncols = (unsigned int)ncols;                                                        \
+    matrix->nrows = (unsigned int)(nrows);                                                      \
+    matrix->ncols = (unsigned int)(ncols);                                                      \
     matrix->data = (DATA_TYPE *)calloc(matrix->nrows * matrix->ncols, sizeof(DATA_TYPE));       \
+    if (matrix->data==NULL) {                                                                   \
+        RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION,                                           \
+                        "Failed to allocate memory for specified matrix.");                     \
+    }                                                                                           \
     return MATRIX_SUCCESS;                                                                      \
 }
 
@@ -123,13 +128,13 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     }                                                                                               \
     unsigned int n_elem;                                                                            \
     MatrixStatusCode status;                                                                        \
-    if ((high) <= (low)) {                                                                              \
+    if ((high) <= (low)) {                                                                          \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "Upper limit cannot be <= lower limit.");         \
     }                                                                                               \
-    if ((step) <= 0) {                                                                                \
+    if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)(((high) - (low)) / (step));                                                            \
+    n_elem = (int)(((high) - (low)) / (step));                                                      \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -655,6 +660,9 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
     //              https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle).
     // 3. Select first nrows * ncols numbers.
     temp_ints = (int *)calloc(high - low, sizeof(int));
+    if (temp_ints == NULL) {
+        RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Failed to allocate memory for temp_ints");
+    }
     for (int i = low; i < high; i++) {
         temp_ints[i - low] = i;
     }
