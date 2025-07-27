@@ -627,16 +627,13 @@ DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
-MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool replace,
-                                    unsigned int seed) {
+MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool replace) {
     int *temp_ints = NULL;
 
     if (low >= high) {
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "low >= high.");
     }
     
-    srand(seed);
-
     // Random numbers with replacement
     if (replace) {
         for (size_t i = 0; i < mat->nrows; i++) {
@@ -698,11 +695,10 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
-MatrixStatusCode mat_fill_random(Matrix *mat, unsigned int seed) {
+MatrixStatusCode mat_fill_random(Matrix *mat) {
     if (mat == NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
-    srand(seed);
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
@@ -715,12 +711,10 @@ MatrixStatusCode mat_fill_random(Matrix *mat, unsigned int seed) {
 // Fill a matrix with random numbers from a Gaussian distribution
 // with mean "mean" and standard deviation "std", using the Box-Muller
 // transform (https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform)
-MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds,
-                              unsigned int seed) {
+MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *stds) {
     if (mat==NULL || means==NULL || stds==NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
-    srand(seed);
 
     if (means->nrows != mat->ncols || stds->nrows != mat->ncols ||
         means->ncols != 1 || stds->ncols != 1) {

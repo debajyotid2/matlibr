@@ -54,7 +54,7 @@ MatrixStatusCode intmat_range(IntMatrix *mat, int low, int high, int step,
 MatrixStatusCode intmat_print(const IntMatrix *matrix);
 MatrixStatusCode intmat_fill(IntMatrix *matrix, const int value);
 MatrixStatusCode intmat_fill_random(IntMatrix *matrix, int low, int high,
-                                    bool replace, unsigned int seed);
+                                    bool replace);
 MatrixStatusCode intmat_scale(IntMatrix *mat, const int fac);
 MatrixStatusCode intmat_add_scalar(IntMatrix *mat, const int scalar);
 MatrixStatusCode intmat_add(IntMatrix *mat_a, const IntMatrix *mat_b);
@@ -78,9 +78,9 @@ MatrixStatusCode mat_print(const Matrix *matrix);
 MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step,
                            unsigned int dimension);
 MatrixStatusCode mat_fill(Matrix *matrix, const double value);
-MatrixStatusCode mat_fill_random(Matrix *matrix, unsigned int seed);
+MatrixStatusCode mat_fill_random(Matrix *matrix);
 MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means,
-                                          Matrix *stds, unsigned int seed);
+                                          Matrix *stds);
 MatrixStatusCode mat_scale(Matrix *mat, const double fac);
 MatrixStatusCode mat_abs_sum(Matrix *mat);
 MatrixStatusCode mat_norm(Matrix *mat);
