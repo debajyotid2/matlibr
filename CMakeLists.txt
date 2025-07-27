@@ -12,9 +12,9 @@ set(PROJECT_VERSION 0.0.1)
 
 add_subdirectory(src)
 
-# enable_testing()
+enable_testing()
 
-# add_subdirectory(tests)
+add_subdirectory(tests)
 
 # Set the version of the library
 set_target_properties(${PROJECT_LIBRARY_NAME} PROPERTIES VERSION ${PROJECT_VERSION})

@@ -15,433 +15,387 @@
   limitations under the License.                                           
 */
 
-#include <stdbool.h>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "../src/matrix.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
-TEST_CASE("Double matrix operations.", "[matrix]")
-{
-    unsigned int seed = 3224;
-    Matrix mymat = mat_create(10, 20);
-    Matrix mymat2 = mat_create(20, 2);
-    Matrix mymat3 = mat_create(10, 20);
-    
-    SECTION("Creating a matrix.")
-    {
-        REQUIRE(mymat.nrows==10);
-        REQUIRE(mymat.ncols==20);
-    }
+// Helper Functions for Testing
 
-    SECTION("Destroying a matrix.")
-    {
-        mat_destroy(&mymat);
-
-        REQUIRE(mymat.data==NULL);
-    }
-
-    SECTION("Copying a matrix.")
-    {
-        mat_fill_random(&mymat, seed);
-        Matrix copy = mat_copy(&mymat);
-        
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(copy.data[i*mymat.ncols+j]==\
-                        mymat.data[i*mymat.ncols+j]);
-
-        mat_destroy(&copy);
-    }
-
-    SECTION("Copying a matrix inplace.")
-    {
-        mat_fill_random(&mymat, seed);
-        Matrix copy = mat_create(mymat.nrows, mymat.ncols);
-        mat_copy_inplace(&mymat, &copy);
-        
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(copy.data[i*mymat.ncols+j]==\
-                        mymat.data[i*mymat.ncols+j]);
-        
-        mat_destroy(&copy);
-    }
-
-    SECTION("Filling a matrix with a single value.")
-    {
-        mat_fill(&mymat, 23.0);
-        
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==23.0);
-    }
-
-    SECTION("Scaling a matrix.")
-    {
-        mat_fill(&mymat, -2.5);
-        mat_scale(&mymat, 17.0);
-
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==-42.5);
-    }
-
-    SECTION("Adding a scalar to a matrix.")
-    {
-        mat_fill(&mymat, -2.5);
-        mat_add_scalar(&mymat, 17.0);
-
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==14.5);
-    }
-
-    SECTION("Adding two matrices")
-    {
-        mat_fill(&mymat, -3.14);
-        mat_fill(&mymat3, 6.28);
-
-        mat_add(&mymat3, &mymat);
-
-        for (size_t i=0; i<mymat3.nrows; i++)
-            for (size_t j=0; j<mymat3.ncols; j++)
-                REQUIRE(mymat3.data[i*mymat3.ncols+j]==3.14);
-    }
-
-    SECTION("Subtracting two matrices")
-    {
-        mat_fill(&mymat, -3.14);
-        mat_fill(&mymat3, 6.28);
-
-        mat_sub(&mymat, &mymat3);
-
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==-9.42);
-    }
-
-    SECTION("Multiplying two matrices.")
-    {
-        mat_fill(&mymat, 20.0);
-        mat_fill(&mymat2, 1.0);
-        
-        Matrix result = mat_mul(&mymat, false, &mymat2, false);
-
-        for (size_t i=0; i<result.nrows; i++)
-            for (size_t j=0; j<result.ncols; j++)
-                REQUIRE(result.data[i*result.ncols+j]==400.0);
-
-        mat_destroy(&result);
-    }
-
-    SECTION("Multiplying two matrices and storing result in place.")
-    {
-        mat_fill(&mymat, 20.0);
-        mat_fill(&mymat2, 1.0);
-        
-        Matrix result = mat_create(mymat.nrows, mymat2.ncols);
-        
-        mat_mul_inplace(&mymat, false, &mymat2, false, &result);
-
-        for (size_t i=0; i<result.nrows; i++)
-            for (size_t j=0; j<result.ncols; j++)
-                REQUIRE(result.data[i*result.ncols+j]==400.0);
-
-        mat_destroy(&result);
-    }
-
-    SECTION("Adding a matrix and a vector.")
-    {
-        Matrix rowvec = mat_create(1, 20);
-        Matrix mymat_copy;
-
-        mat_fill_random(&rowvec, seed);
-        mat_fill_random(&mymat, seed);
-
-        mymat_copy = mat_copy(&mymat);
-
-        mat_vec_add(&mymat, &rowvec);
-
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==\
-                        mymat_copy.data[i*mymat.ncols+j] + rowvec.data[j]);
-
-        mat_destroy(&mymat_copy);
-        mat_destroy(&rowvec);
-    }
-
-    SECTION("Subtracting a vector from a matrix.")
-    {
-        Matrix rowvec = mat_create(1, 20);
-        Matrix mymat_copy;
-        
-        mat_fill_random(&rowvec, seed);
-        mat_fill_random(&mymat, seed);
-
-        mymat_copy = mat_copy(&mymat);
-        
-        mat_vec_sub(&mymat, &rowvec);
-
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==\
-                        mymat_copy.data[i*mymat.ncols+j] - rowvec.data[j]);
-
-        mat_destroy(&mymat_copy);
-        mat_destroy(&rowvec);
-    }
-
-
-    SECTION("Repeating a row vector along rows.")
-    {
-        Matrix rowvec = mat_create(1, 20);
-        Matrix repeated;
-
-        mat_fill_random(&rowvec, seed);
-        repeated = mat_repeat(&rowvec, 0, 5);
-
-        for (size_t i=0; i<repeated.nrows; i++)
-            for (size_t j=0; j<repeated.ncols; j++)
-                REQUIRE(repeated.data[i*repeated.ncols+j]==rowvec.data[j]);
-
-        mat_destroy(&rowvec);
-        mat_destroy(&repeated);
-    }
-
-    SECTION("Repeating a column vector along columns.")
-    {
-        Matrix colvec = mat_create(10, 1);
-        Matrix repeated;
-
-        mat_fill_random(&colvec, seed);
-        repeated = mat_repeat(&colvec, 1, 5);
-
-        for (size_t i=0; i<repeated.nrows; i++)
-            for (size_t j=0; j<repeated.ncols; j++)
-                REQUIRE(repeated.data[i*repeated.ncols+j]==colvec.data[i]);
-
-        mat_destroy(&colvec);
-        mat_destroy(&repeated);
-    }
-
-    mat_destroy(&mymat);
-    mat_destroy(&mymat2);
-    mat_destroy(&mymat3);
+// Checks if two IntMatrix instances are identical.
+bool are_int_matrices_equal(const IntMatrix* a, const IntMatrix* b) {
+    if (a == NULL || b == NULL) return false;
+    if (a->nrows != b->nrows || a->ncols != b->ncols) return false;
+    return memcmp(a->data, b->data, a->nrows * a->ncols * sizeof(int)) == 0;
 }
 
-TEST_CASE("Integer matrix operations.", "[matrix]")
-{
-    unsigned int seed = 3224;
-    IntMatrix mymat = intmat_create(10, 20);
-    IntMatrix mymat2 = intmat_create(20, 2);
-    IntMatrix mymat3 = intmat_create(10, 20);
-    
-    SECTION("Creating a matrix.")
-    {
-        REQUIRE(mymat.nrows==10);
-        REQUIRE(mymat.ncols==20);
+// Checks if two double Matrix instances are equal within a tolerance.
+bool are_double_matrices_equal(const Matrix* a, const Matrix* b, double epsilon) {
+    if (a == NULL || b == NULL) return false;
+    if (a->nrows != b->nrows || a->ncols != b->ncols) return false;
+    for (size_t i = 0; i < a->nrows * a->ncols; ++i) {
+        if (fabs(a->data[i] - b->data[i]) > epsilon) return false;
+    }
+    return true;
+}
+
+// Comparison function for qsort with integers.
+int compare_ints(const void* a, const void* b) {
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+
+TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
+    IntMatrix mat;
+
+    SECTION("Creation with valid dimensions") {
+        REQUIRE(intmat_create(&mat, 3, 4) == MATRIX_SUCCESS);
+        REQUIRE(mat.nrows == 3);
+        REQUIRE(mat.ncols == 4);
+        REQUIRE(mat.data != NULL);
+        for (size_t i = 0; i < 12; ++i) REQUIRE(mat.data[i] == 0);
+        intmat_destroy(&mat);
     }
 
-    SECTION("Destroying a matrix.")
-    {
-        intmat_destroy(&mymat);
-
-        REQUIRE(mymat.data==NULL);
+    SECTION("Creation with invalid dimensions") {
+        REQUIRE(intmat_create(&mat, 0, 5) == MATRIX_ERR_INVALID_DIMENSION);
+        REQUIRE(intmat_create(&mat, 5, 0) == MATRIX_ERR_INVALID_DIMENSION);
+        REQUIRE(intmat_create(&mat, -1, 5) == MATRIX_ERR_INVALID_DIMENSION);
     }
 
-     SECTION("Copying a matrix.")
-     {
-         intmat_fill_random(&mymat, 0, 10, true, seed);
-         IntMatrix copy = intmat_copy(&mymat);
-         
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(copy.data[i*mymat.ncols+j]==\
-                         mymat.data[i*mymat.ncols+j]);
- 
-         intmat_destroy(&copy);
-     }
- 
-     SECTION("Copying a matrix inplace.")
-     {
-         intmat_fill_random(&mymat, 0, 10, true, seed);
-         IntMatrix copy = intmat_create(mymat.nrows, mymat.ncols);
-         intmat_copy_inplace(&mymat, &copy);
-         
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(copy.data[i*mymat.ncols+j]==\
-                         mymat.data[i*mymat.ncols+j]);
-         
-         intmat_destroy(&copy);
-     }
-
-     SECTION("Filling a matrix with a single value.")
-     {
-         intmat_fill(&mymat, 23);
-         
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(mymat.data[i*mymat.ncols+j]==23);
-     }
- 
-     SECTION("Scaling a matrix.")
-     {
-         intmat_fill(&mymat, -2);
-         intmat_scale(&mymat, 17);
- 
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(mymat.data[i*mymat.ncols+j]==-34);
-     }
- 
-     SECTION("Adding a scalar to a matrix.")
-     {
-         intmat_fill(&mymat, -2);
-         intmat_add_scalar(&mymat, 17);
- 
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(mymat.data[i*mymat.ncols+j]==15);
-     }
-
-    SECTION("Adding two matrices")
-    {
-        intmat_fill(&mymat, -3);
-        intmat_fill(&mymat3, 6);
-
-        intmat_add(&mymat3, &mymat);
-
-        for (size_t i=0; i<mymat3.nrows; i++)
-            for (size_t j=0; j<mymat3.ncols; j++)
-                REQUIRE(mymat3.data[i*mymat3.ncols+j]==3);
+    SECTION("Creation with null pointer") {
+        REQUIRE(intmat_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR);
     }
 
-    SECTION("Subtracting two matrices")
-    {
-        intmat_fill(&mymat, -3);
-        intmat_fill(&mymat3, 6);
+    SECTION("Destruction") {
+        intmat_create(&mat, 2, 2);
+        REQUIRE(intmat_destroy(&mat) == MATRIX_SUCCESS);
+        REQUIRE(mat.data == NULL);
+        REQUIRE(intmat_destroy(NULL) == MATRIX_ERR_NULL_PTR);
+    }
+}
 
-        intmat_sub(&mymat, &mymat3);
+TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
+    IntMatrix mat_a, result;
+    intmat_create(&mat_a, 2, 2);
+    mat_a.data[0] = 1; mat_a.data[1] = 2; mat_a.data[2] = 3; mat_a.data[3] = 4;
 
-        for (size_t i=0; i<mymat.nrows; i++)
-            for (size_t j=0; j<mymat.ncols; j++)
-                REQUIRE(mymat.data[i*mymat.ncols+j]==-9);
+    SECTION("Copy") {
+        REQUIRE(intmat_copy(&result, &mat_a) == MATRIX_SUCCESS);
+        REQUIRE(are_int_matrices_equal(&mat_a, &result));
+        REQUIRE(mat_a.data != result.data);
+        intmat_destroy(&result);
     }
 
-     SECTION("Multiplying two matrices.")
-     {
-         intmat_fill(&mymat, 21);
-         intmat_fill(&mymat2, 3);
-         intmat_fill(&mymat3, -5);
-         
-         IntMatrix result = intmat_mul(&mymat, false, &mymat2, false);
-         IntMatrix result_2 = intmat_mul(&mymat, false, &mymat3, true);
- 
-         for (size_t i=0; i<result.nrows; i++)
-             for (size_t j=0; j<result.ncols; j++)
-                 REQUIRE(result.data[i*result.ncols+j]==1260);
+    SECTION("Fill") {
+        REQUIRE(intmat_fill(&mat_a, 7) == MATRIX_SUCCESS);
+        for (int i = 0; i < 4; ++i) REQUIRE(mat_a.data[i] == 7);
+    }
 
-         for (size_t i=0; i<result_2.nrows; i++)
-             for (size_t j=0; j<result_2.ncols; j++)
-                 REQUIRE(result_2.data[i*result_2.ncols+j]==-2100);
- 
-         intmat_destroy(&result);
-         intmat_destroy(&result_2);
-     }
+    SECTION("Scale") {
+        REQUIRE(intmat_scale(&mat_a, 2) == MATRIX_SUCCESS);
+        int expected_data[] = {2, 4, 6, 8};
+        for (int i = 0; i < 4; ++i) REQUIRE(mat_a.data[i] == expected_data[i]);
+    }
 
-     SECTION("Multiplying two matrices and storing result in place.")
-     {
-         intmat_fill(&mymat, 20);
-         intmat_fill(&mymat2, 1);
-         
-         IntMatrix result = intmat_create(mymat.nrows, mymat2.ncols);
-         
-         intmat_mul_inplace(&mymat, false, &mymat2, false, &result);
- 
-         for (size_t i=0; i<result.nrows; i++)
-             for (size_t j=0; j<result.ncols; j++)
-                 REQUIRE(result.data[i*result.ncols+j]==400);
- 
-         intmat_destroy(&result);
-     }
+    SECTION("Add Scalar") {
+        REQUIRE(intmat_add_scalar(&mat_a, 10) == MATRIX_SUCCESS);
+        int expected_data[] = {11, 12, 13, 14};
+        for (int i = 0; i < 4; ++i) REQUIRE(mat_a.data[i] == expected_data[i]);
+    }
 
-     SECTION("Adding a matrix and a vector.")
-     {
-         IntMatrix rowvec = intmat_create(1, 20);
-         IntMatrix myintmat_copy;
- 
-         intmat_fill_random(&rowvec, 0, 20, true, seed);
-         intmat_fill_random(&mymat, 0, 30, true, seed);
- 
-         myintmat_copy = intmat_copy(&mymat);
- 
-         intmat_vec_add(&mymat, &rowvec);
- 
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(mymat.data[i*mymat.ncols+j]==\
-                         myintmat_copy.data[i*mymat.ncols+j] + rowvec.data[j]);
- 
-         intmat_destroy(&myintmat_copy);
-         intmat_destroy(&rowvec);
-     }
- 
-     SECTION("Subtracting a vector from a matrix.")
-     {
-         IntMatrix rowvec = intmat_create(1, 20);
-         IntMatrix myintmat_copy;
-         
-         intmat_fill_random(&rowvec, -1, 23, true, seed);
-         intmat_fill_random(&mymat, 4, 67, true, seed);
- 
-         myintmat_copy = intmat_copy(&mymat);
-         
-         intmat_vec_sub(&mymat, &rowvec);
- 
-         for (size_t i=0; i<mymat.nrows; i++)
-             for (size_t j=0; j<mymat.ncols; j++)
-                 REQUIRE(mymat.data[i*mymat.ncols+j]==\
-                         myintmat_copy.data[i*mymat.ncols+j] - rowvec.data[j]);
- 
-         intmat_destroy(&myintmat_copy);
-         intmat_destroy(&rowvec);
-     }
- 
- 
-     SECTION("Repeating a row vector along rows.")
-     {
-         IntMatrix rowvec = intmat_create(1, 20);
-         IntMatrix repeated;
- 
-         intmat_fill_random(&rowvec, -6, 36, true, seed);
-         repeated = intmat_repeat(&rowvec, 0, 5);
- 
-         for (size_t i=0; i<repeated.nrows; i++)
-             for (size_t j=0; j<repeated.ncols; j++)
-                 REQUIRE(repeated.data[i*repeated.ncols+j]==rowvec.data[j]);
- 
-         intmat_destroy(&rowvec);
-         intmat_destroy(&repeated);
-     }
- 
-     SECTION("Repeating a column vector along columns.")
-     {
-         IntMatrix colvec = intmat_create(10, 1);
-         IntMatrix repeated;
- 
-         intmat_fill_random(&colvec, -20, 20, true, seed);
-         repeated = intmat_repeat(&colvec, 1, 5);
- 
-         for (size_t i=0; i<repeated.nrows; i++)
-             for (size_t j=0; j<repeated.ncols; j++)
-                 REQUIRE(repeated.data[i*repeated.ncols+j]==colvec.data[i]);
- 
-         intmat_destroy(&colvec);
-         intmat_destroy(&repeated);
-     }
+    intmat_destroy(&mat_a);
+}
 
-    intmat_destroy(&mymat);
-    intmat_destroy(&mymat2);
-    intmat_destroy(&mymat3);
+TEST_CASE("IntMatrix: Random Fill", "[intmatrix]") {
+    IntMatrix mat;
+    intmat_create(&mat, 4, 5);
+
+    SECTION("Fill random with replacement") {
+        REQUIRE(intmat_fill_random(&mat, 1, 10, true) == MATRIX_SUCCESS);
+        for (size_t i = 0; i < 20; ++i) {
+            REQUIRE(mat.data[i] >= 1);
+            REQUIRE(mat.data[i] < 10);
+        }
+    }
+
+    SECTION("Fill random without replacement") {
+        REQUIRE(intmat_fill_random(&mat, 0, 20, false) == MATRIX_SUCCESS);
+        
+        size_t num_elements = mat.nrows * mat.ncols;
+        int* temp_array = (int*)malloc(num_elements * sizeof(int));
+        REQUIRE(temp_array != NULL);
+        memcpy(temp_array, mat.data, num_elements * sizeof(int));
+
+        qsort(temp_array, num_elements, sizeof(int), compare_ints);
+
+        bool duplicate_found = false;
+        for (size_t i = 0; i < num_elements - 1; ++i) {
+            if (temp_array[i] == temp_array[i + 1]) {
+                duplicate_found = true;
+                break;
+            }
+        }
+        free(temp_array);
+        REQUIRE_FALSE(duplicate_found);
+    }
+
+    SECTION("Error cases for random fill") {
+        REQUIRE(intmat_fill_random(&mat, 10, 5, false) == MATRIX_ERR_RANGE_INVALID);
+        REQUIRE(intmat_fill_random(&mat, 0, 19, false) == MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE);
+    }
+
+    intmat_destroy(&mat);
+}
+
+TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
+    IntMatrix mat_a, mat_b, result, expected_mat;
+    intmat_create(&mat_a, 2, 2);
+    intmat_create(&mat_b, 2, 2);
+    mat_a.data[0] = 1; mat_a.data[1] = 2; mat_a.data[2] = 3; mat_a.data[3] = 4;
+    mat_b.data[0] = 5; mat_b.data[1] = 6; mat_b.data[2] = 7; mat_b.data[3] = 8;
+
+    SECTION("Addition") {
+        REQUIRE(intmat_add(&mat_a, &mat_b) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 2, 2);
+        int expected_data[] = {6, 8, 10, 12};
+        memcpy(expected_mat.data, expected_data, 4 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&mat_a, &expected_mat));
+        intmat_destroy(&expected_mat);
+    }
+
+    SECTION("Subtraction") {
+        REQUIRE(intmat_sub(&mat_a, &mat_b) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 2, 2);
+        int expected_data[] = {-4, -4, -4, -4};
+        memcpy(expected_mat.data, expected_data, 4 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&mat_a, &expected_mat));
+        intmat_destroy(&expected_mat);
+    }
+
+    SECTION("Multiplication") {
+        intmat_create(&result, 2, 2);
+        REQUIRE(intmat_mul(&mat_a, false, &mat_b, false, &result) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 2, 2);
+        int expected_data[] = {19, 22, 43, 50};
+        memcpy(expected_mat.data, expected_data, 4 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&result, &expected_mat));
+        intmat_destroy(&result);
+        intmat_destroy(&expected_mat);
+    }
+
+    intmat_destroy(&mat_a);
+    intmat_destroy(&mat_b);
+}
+
+TEST_CASE("IntMatrix: Vector Operations", "[intmatrix]") {
+    IntMatrix mat, vec, result, expected_mat;
+    intmat_create(&mat, 2, 3);
+    for(int i = 0; i < 6; ++i) mat.data[i] = 1;
+
+    SECTION("Add row vector") {
+        intmat_create(&vec, 1, 3);
+        vec.data[0] = 1; vec.data[1] = 2; vec.data[2] = 3;
+        REQUIRE(intmat_vec_add(&mat, &vec) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 2, 3);
+        int expected_data[] = {2, 3, 4, 2, 3, 4};
+        memcpy(expected_mat.data, expected_data, 6 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&mat, &expected_mat));
+        intmat_destroy(&vec);
+        intmat_destroy(&expected_mat);
+    }
+
+    SECTION("Range") {
+        REQUIRE(intmat_range(&result, 0, 10, 2, 1) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 1, 5);
+        int expected_data[] = {0, 2, 4, 6, 8};
+        memcpy(expected_mat.data, expected_data, 5 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&result, &expected_mat));
+        intmat_destroy(&result);
+        intmat_destroy(&expected_mat);
+    }
+
+    SECTION("Repeat") {
+        intmat_create(&vec, 1, 2);
+        vec.data[0] = 5; vec.data[1] = 10;
+        REQUIRE(intmat_repeat(&result, &vec, 0, 3) == MATRIX_SUCCESS);
+        intmat_create(&expected_mat, 3, 2);
+        int expected_data[] = {5, 10, 5, 10, 5, 10};
+        memcpy(expected_mat.data, expected_data, 6 * sizeof(int));
+        REQUIRE(are_int_matrices_equal(&result, &expected_mat));
+        intmat_destroy(&vec);
+        intmat_destroy(&result);
+        intmat_destroy(&expected_mat);
+    }
+
+    intmat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Creation and Core Ops", "[matrix]") {
+    Matrix mat;
+    mat_create(&mat, 2, 2);
+    REQUIRE(mat_fill(&mat, 3.5) == MATRIX_SUCCESS);
+    for(int i=0; i<4; ++i) {
+        REQUIRE_THAT(mat.data[i], Catch::Matchers::WithinAbs(3.5, 1e-9));
+    }
+    mat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Scalar and Arithmetic Operations", "[matrix]") {
+    Matrix mat;
+    mat_create(&mat, 2, 3);
+    for(int i = 0; i < 6; ++i) mat.data[i] = 1.5;
+
+    SECTION("Add Scalar") {
+        REQUIRE(mat_add_scalar(&mat, 10.5) == MATRIX_SUCCESS);
+        for(int i=0; i<6; ++i) {
+            REQUIRE_THAT(mat.data[i], Catch::Matchers::WithinAbs(12.0, 1e-9));
+        }
+    }
+
+    SECTION("Addition") {
+        Matrix mat_b;
+        mat_create(&mat_b, 2, 3);
+        mat_fill(&mat_b, 0.5);
+        REQUIRE(mat_add(&mat, &mat_b) == MATRIX_SUCCESS);
+        for(int i=0; i<6; ++i) {
+            REQUIRE_THAT(mat.data[i], Catch::Matchers::WithinAbs(2.0, 1e-9));
+        }
+        mat_destroy(&mat_b);
+    }
+
+    mat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Vector Operations", "[matrix]") {
+    Matrix mat, vec_row, vec_col, result, expected_mat;
+    IntMatrix indices;
+    double tol = 1.0e-9;
+
+    mat_create(&mat, 2, 3);
+    for(int i = 0; i < 6; ++i) mat.data[i] = 1.5;
+
+    mat_create(&vec_row, 1, 3);
+    vec_row.data[0] = 1.0; vec_row.data[1] = 2.0; vec_row.data[2] = 3.0;
+
+    mat_create(&vec_col, 2, 1);
+    vec_col.data[0] = 10.0; vec_col.data[1] = 20.0;
+
+    SECTION("Add row vector") {
+        REQUIRE(mat_vec_add(&mat, &vec_row) == MATRIX_SUCCESS);
+        mat_create(&expected_mat, 2, 3);
+        double expected_data[] = {2.5, 3.5, 4.5, 2.5, 3.5, 4.5};
+        memcpy(expected_mat.data, expected_data, 6 * sizeof(double));
+        REQUIRE(are_double_matrices_equal(&mat, &expected_mat, tol));
+        mat_destroy(&expected_mat);
+    }
+
+    SECTION("Subtract column vector") {
+        REQUIRE(mat_vec_sub(&mat, &vec_col) == MATRIX_SUCCESS);
+        mat_create(&expected_mat, 2, 3);
+        double expected_data[] = {-8.5, -8.5, -8.5, -18.5, -18.5, -18.5};
+        memcpy(expected_mat.data, expected_data, 6 * sizeof(double));
+        REQUIRE(are_double_matrices_equal(&mat, &expected_mat, tol));
+        mat_destroy(&expected_mat);
+    }
+
+    SECTION("Range") {
+        REQUIRE(mat_range(&result, 0.0, 1.0, 0.25, 1) == MATRIX_SUCCESS);
+        mat_create(&expected_mat, 1, 4);
+        double expected_data[] = {0.0, 0.25, 0.5, 0.75};
+        memcpy(expected_mat.data, expected_data, 4 * sizeof(double));
+        REQUIRE(are_double_matrices_equal(&result, &expected_mat, tol));
+        mat_destroy(&result);
+        mat_destroy(&expected_mat);
+    }
+
+    SECTION("Repeat") {
+        REQUIRE(mat_repeat(&result, &vec_row, 0, 2) == MATRIX_SUCCESS);
+        mat_create(&expected_mat, 2, 3);
+        double expected_data[] = {1.0, 2.0, 3.0, 1.0, 2.0, 3.0};
+        memcpy(expected_mat.data, expected_data, 6 * sizeof(double));
+        REQUIRE(are_double_matrices_equal(&result, &expected_mat, tol));
+        mat_destroy(&result);
+        mat_destroy(&expected_mat);
+    }
+
+    SECTION("Gather") {
+        intmat_create(&indices, 2, 1);
+        indices.data[0] = 2; indices.data[1] = 0;
+        mat_create(&result, 2, 2);
+        REQUIRE(mat_gather(&mat, &result, &indices, 1) == MATRIX_SUCCESS);
+        mat_create(&expected_mat, 2, 2);
+        double expected_data[] = {1.5, 1.5, 1.5, 1.5};
+        memcpy(expected_mat.data, expected_data, 4 * sizeof(double));
+        REQUIRE(are_double_matrices_equal(&result, &expected_mat, tol));
+
+        indices.data[0] = 3;
+        REQUIRE(mat_gather(&mat, &result, &indices, 1) == MATRIX_ERR_INDEX_OUT_OF_BOUNDS);
+        intmat_destroy(&indices);
+        mat_destroy(&result);
+        mat_destroy(&expected_mat);
+    }
+
+    mat_destroy(&mat);
+    mat_destroy(&vec_row);
+    mat_destroy(&vec_col);
+}
+
+TEST_CASE("Matrix: BLAS-based Functions", "[matrix]") {
+    Matrix mat;
+    mat_create(&mat, 2, 3);
+    mat.data[0] = -1.0; mat.data[1] = 2.0; mat.data[2] = -3.0;
+    mat.data[3] = 4.0; mat.data[4] = -5.0; mat.data[5] = 6.0;
+
+    SECTION("Absolute Sum (dasum)") {
+        double sum = 0.0;
+        REQUIRE(mat_abs_sum(&sum, &mat) == MATRIX_SUCCESS);
+        REQUIRE_THAT(sum, Catch::Matchers::WithinAbs(21.0, 1e-9));
+    }
+
+    SECTION("Euclidean Norm (dnrm2)") {
+        double norm = 0.0;
+        REQUIRE(mat_norm(&norm, &mat) == MATRIX_SUCCESS);
+        double expected_norm_sq = 1.0 + 4.0 + 9.0 + 16.0 + 25.0 + 36.0; // 91.0
+        REQUIRE_THAT(norm, Catch::Matchers::WithinAbs(sqrt(expected_norm_sq), 1e-9));
+    }
+
+    mat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Random Fill", "[matrix]") {
+    Matrix mat, means, stds;
+    mat_create(&mat, 10, 10);
+
+    SECTION("Uniform random") {
+        REQUIRE(mat_fill_random(&mat) == MATRIX_SUCCESS);
+        for(size_t i=0; i<100; ++i) {
+            REQUIRE(mat.data[i] >= 0.0);
+            REQUIRE(mat.data[i] <= 1.0);
+        }
+    }
+
+    SECTION("Gaussian random") {
+        mat_create(&means, 10, 1);
+        mat_create(&stds, 10, 1);
+        mat_fill(&means, 5.0);
+        mat_fill(&stds, 2.0);
+
+        REQUIRE(mat_fill_random_gaussian(&mat, &means, &stds) == MATRIX_SUCCESS);
+        double sum = 0;
+        for(size_t i=0; i<100; ++i) sum += mat.data[i];
+        double average = sum / 100.0;
+        REQUIRE_THAT(average, Catch::Matchers::WithinAbs(5.0, 1.5));
+
+        mat_destroy(&means);
+        mat_destroy(&stds);
+    }
+
+    mat_destroy(&mat);
 }
