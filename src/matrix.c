@@ -133,12 +133,11 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE* mat) {                            
     if (mat==NULL || mat->data==NULL) {                                                         \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
-    size_t total_elements = mat->nrows*mat->ncols;                                              \
-    for (size_t i = 0; i < total_elements; i++) {                                               \
-        printf(FORMAT_SPECIFIER " ", mat->data[i]);                                             \
-        if (i%mat->ncols == 0) {                                                                \
-            printf("\n");                                                                       \
+    for (size_t i = 0; i < mat->nrows; i++) {                                                   \
+        for (size_t j = 0; j < mat->ncols; j++) {                                               \
+            printf(FORMAT_SPECIFIER " ", mat->data[i*mat->ncols+j]);                            \
         }                                                                                       \
+        printf("\n");                                                                           \
     }                                                                                           \
     return MATRIX_SUCCESS;                                                                      \
 }
@@ -643,7 +642,7 @@ DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
-DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%d")
+DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
 DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
@@ -714,7 +713,7 @@ DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
-DEFINE_MATRIX_PRINT(mat_print, Matrix, "%g")
+DEFINE_MATRIX_PRINT(mat_print, Matrix, "%6.06f")
 DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
