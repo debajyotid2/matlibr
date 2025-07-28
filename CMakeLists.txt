@@ -15,6 +15,7 @@ add_subdirectory(src)
 enable_testing()
 
 add_subdirectory(tests)
+add_subdirectory(benchmarks)
 
 # Set the version of the library
 set_target_properties(${PROJECT_LIBRARY_NAME} PROPERTIES VERSION ${PROJECT_VERSION})

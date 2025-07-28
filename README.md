@@ -21,23 +21,21 @@ The following example taken from [`matrix_addition.c`](./examples/matrix_additio
 
 ```c
 #include <stdio.h>
-#include <matrix.h>
+#include "matrix.h"
 
 int main() {
-    size_t seed = 42;
     int nrow = 10, ncol = 5;
-    Matrix a = mat_create(nrow, ncol);
-    
-    // Fill matrix a with random values between 0.0 and 1.0
-    mat_fill_random(&a, seed);
-    
-    Matrix b = mat_copy(&a);
+    Matrix a;
+    mat_create(&a, nrow, ncol);
+    mat_fill_random(&a);
+    Matrix b;
+    mat_copy(&b, &a);
     mat_scale(&b, 2.34);
     
     printf("\n************Matrix addition***************\n");
     printf("A: \n");
     mat_print(&a);
-    printf(" +\n B: \n");
+    printf("\n +\n B: \n");
     mat_print(&b);
     printf(" = \n");
     
@@ -45,7 +43,7 @@ int main() {
     mat_add(&a, &b);
     mat_print(&a);
     printf("\n******************************************\n");
-    
+
     mat_destroy(&a);
     mat_destroy(&b);
 }

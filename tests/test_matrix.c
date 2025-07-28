@@ -17,7 +17,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "../src/matrix.h"
+#include "matrix.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
