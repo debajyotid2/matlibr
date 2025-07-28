@@ -1,7 +1,6 @@
 # Configure testing.
 set(TEST_BINS matlibr.test)
 file(GLOB_RECURSE TEST_SOURCE_FILES ${PROJECT_ROOT_DIR}/tests/*.c)
-message(STATUS "${TEST_SOURCE_FILES}")
 
 include(AddCatch2)
 
