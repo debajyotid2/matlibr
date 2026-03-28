@@ -19,7 +19,7 @@ cd $DEP_DIR
 
 # Download and install OpenBLAS
 wget $OPENBLAS_URL
-unzip "${OPENBLAS_DIR}.zip"
+unzip -o "${OPENBLAS_DIR}.zip"
 rm "${OPENBLAS_DIR}.zip" 
 cd $OPENBLAS_DIR
 if [ ! -f libopenblas.a ]; then
