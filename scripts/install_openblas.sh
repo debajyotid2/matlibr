@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -xe
+
 # Set up variables
 DEP_DIR="../third_party"
 OPENBLAS_URL="https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.28/OpenBLAS-0.3.28.zip"
@@ -13,17 +15,17 @@ fi
 
 # Create directory for dependencies
 mkdir $DEP_DIR
-cd $DEP_DIR || { echo "cd $DEP_DIR failed."; exit 1; }
+cd $DEP_DIR
 
 # Download and install OpenBLAS
-wget $OPENBLAS_URL || { echo "wget $OPENBLAS_URL failed."; exit 2; }
+wget $OPENBLAS_URL
 unzip "${OPENBLAS_DIR}.zip"
 rm "${OPENBLAS_DIR}.zip" 
-cd $OPENBLAS_DIR || { echo "cd $OPENBLAS_DIR failed."; exit 3; }
+cd $OPENBLAS_DIR
 if [ ! -f libopenblas.a ]; then
-    make -j "$NUM_THREADS" || { echo "OpenBLAS build failed."; exit 4; }
+    make -j "$NUM_THREADS"
 else
     echo "libopenblas.a found! Skipping build."
 fi
-sudo make install -j "$NUM_THREADS" || { echo "OpenBLAS install failed."; exit 5; }
+sudo make install -j "$NUM_THREADS"
 cd ..
