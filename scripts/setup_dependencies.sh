@@ -6,7 +6,7 @@ set -xe
 DEP_DIR="../third_party"
 OPENBLAS_URL="https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.28/OpenBLAS-0.3.28.zip"
 OPENBLAS_DIR="OpenBLAS-0.3.28"
-CFLAGS="-O2 -march=native"
+CFLAGS="-O2 -march=native NO_SHARED=1"
 
 if [ "$1" = "" ]; then
     NUM_THREADS=1
