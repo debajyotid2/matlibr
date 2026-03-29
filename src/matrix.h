@@ -47,6 +47,8 @@ typedef enum {
     MATRIX_ERROR_ZERO_STD_DEV
 } MatrixStatusCode;
 
+#define DEFINE_MATRIX_AT_MACRO
+
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
 MatrixStatusCode intmat_at(IntMatrix *matrix, int row, int col, int* value);
