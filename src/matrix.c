@@ -71,7 +71,7 @@ error_handler(__func__, __LINE__, status_code, msg)
     } while (0)
 
 // Matrix elementwise access
-#ifndef DEFINE_MATRIX_AT_MACRO
+#ifdef DEFINE_MATRIX_AT_MACRO
     #define MATRIX_AT(matrix, row, col) {                                                   \
         if (matrix == NULL) {                                                               \
             HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                    \
