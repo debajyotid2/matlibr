@@ -70,24 +70,6 @@ error_handler(__func__, __LINE__, status_code, msg)
         return (status_code);                           \
     } while (0)
 
-// Matrix elementwise access
-#ifdef DEFINE_MATRIX_AT_MACRO
-    #define MATRIX_AT(matrix, row, col) {                                                   \
-        if (matrix == NULL) {                                                               \
-            HANDLE_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                    \
-            return 0.0;                                                                     \
-        }                                                                                   \
-        if (row >= matrix->nrows || row < 0) {                                              \
-            HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");       \
-            return 0.0;                                                                     \
-        } else if (col < 0 || col >= matrix->ncols) {                                       \
-            HANDLE_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");    \
-            return 0.0;                                                                     \
-        }                                                                                   \
-        return matrix->data[matrix->ncols * row + col];                                     \
-    }
-#endif
-
 // Create a matrix
 #define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                 \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                         \
