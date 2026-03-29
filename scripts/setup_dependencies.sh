@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -xe
+set -x
 
 # Set up variables
 DEP_DIR="../third_party"
@@ -20,10 +20,15 @@ mkdir $DEP_DIR
 cd $DEP_DIR
 
 # Download and install OpenBLAS
+set -e
 wget $OPENBLAS_URL
+set +e
+
 unzip -o "${OPENBLAS_DIR}.zip"
 rm "${OPENBLAS_DIR}.zip" 
 cd $OPENBLAS_DIR
+
+set -e
 if [ ! -f libopenblas.a ]; then
     make libs CFLAGS="${CFLAGS}" "${OTHER_FLAGS}" TARGET=HASWELL -j "${NUM_THREADS}"
 else
