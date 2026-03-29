@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Matrix for double precision data
 typedef struct {
@@ -47,7 +48,21 @@ typedef enum {
     MATRIX_ERROR_ZERO_STD_DEV
 } MatrixStatusCode;
 
-#define DEFINE_MATRIX_AT_MACRO
+// Matrix elementwise access
+#define MATRIX_AT(matrix, row, col) ({                                                                       \
+    if ((matrix) == NULL) {                                                                                  \
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Null pointer received.");      \
+        abort();                                                                                             \
+    }                                                                                                        \
+    if ((row) >= (matrix)->nrows || (row) < 0) {                                                             \
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Row index out of bounds.");    \
+        abort();                                                                                             \
+    } else if ((col) < 0 || (col) >= (matrix)->ncols) {                                                      \
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Column index out of bounds."); \
+        abort();                                                                                             \
+    }                                                                                                        \
+    (matrix)->data[(matrix)->ncols * (row) + (col)];                                                         \
+})
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
