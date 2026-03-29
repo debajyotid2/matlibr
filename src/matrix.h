@@ -24,13 +24,13 @@
 // Matrix for double precision data
 typedef struct {
     unsigned int nrows, ncols;
-    double *data;
+    double      *data;
 } Matrix;
 
 // Matrix for integer data
 typedef struct {
     unsigned int nrows, ncols;
-    int *data;
+    int         *data;
 } IntMatrix;
 
 // Operation status codes
@@ -49,6 +49,9 @@ typedef enum {
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
+MatrixStatusCode intmat_at(IntMatrix *matrix, int row, int col, int* value);
+MatrixStatusCode intmat_assign(IntMatrix *matrix, int nrow, int ncol,
+                               int value);
 MatrixStatusCode intmat_copy(IntMatrix *copy, const IntMatrix *mat);
 MatrixStatusCode intmat_range(IntMatrix *mat, int low, int high, int step,
                               unsigned int dimension);
@@ -69,11 +72,13 @@ MatrixStatusCode intmat_vec_add(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to,
                                const IntMatrix *indices,
-                               unsigned int dimension);
+                               unsigned int     dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for double matrices
 MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
+MatrixStatusCode mat_at(Matrix *matrix, int row, int col, double* value);
+MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
 MatrixStatusCode mat_print(const Matrix *matrix);
 MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step,
@@ -83,8 +88,8 @@ MatrixStatusCode mat_fill_random(Matrix *matrix);
 MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means,
                                           Matrix *stds);
 MatrixStatusCode mat_scale(Matrix *mat, const double fac);
-MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat);
-MatrixStatusCode mat_norm(double* norm, Matrix *mat);
+MatrixStatusCode mat_abs_sum(double *sum, Matrix *mat);
+MatrixStatusCode mat_norm(double *norm, Matrix *mat);
 MatrixStatusCode mat_add_scalar(Matrix *mat, const double scalar);
 MatrixStatusCode mat_add(Matrix *mat_a, const Matrix *mat_b);
 MatrixStatusCode mat_sub(Matrix *mat_a, const Matrix *mat_b);
