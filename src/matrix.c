@@ -124,22 +124,6 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE valu
     return MATRIX_SUCCESS;                                                                      \
 }
 
-// Get a value at a particular index
-#define DEFINE_MATRIX_AT(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                     \
-MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE *value) {           \
-    if (matrix == NULL || value == NULL) {                                                      \
-        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
-    }                                                                                           \
-    if (row >= matrix->nrows || row < 0) {                                                      \
-        RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
-    }                                                                                           \
-    if (col >= matrix->ncols || col < 0) {                                                      \
-        RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
-    }                                                                                           \
-    *value = matrix->data[row * matrix->ncols + col];                                           \
-    return MATRIX_SUCCESS;                                                                      \
-}
-
 // Copy a matrix
 #define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)                      \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {                         \
@@ -689,7 +673,6 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
 
 DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
-DEFINE_MATRIX_AT(intmat_at, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
@@ -762,7 +745,6 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
 
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
-DEFINE_MATRIX_AT(mat_at, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
