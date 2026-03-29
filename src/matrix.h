@@ -47,9 +47,10 @@ typedef enum {
     MATRIX_ERROR_ZERO_STD_DEV
 } MatrixStatusCode;
 
+#define DEFINE_MATRIX_AT_MACRO
+
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
-MatrixStatusCode intmat_at(IntMatrix *matrix, int row, int col, int* value);
 MatrixStatusCode intmat_assign(IntMatrix *matrix, int nrow, int ncol,
                                int value);
 MatrixStatusCode intmat_copy(IntMatrix *copy, const IntMatrix *mat);
@@ -77,7 +78,6 @@ MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for double matrices
 MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
-MatrixStatusCode mat_at(Matrix *matrix, int row, int col, double* value);
 MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
 MatrixStatusCode mat_print(const Matrix *matrix);

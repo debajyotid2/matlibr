@@ -111,13 +111,6 @@ TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
         REQUIRE(intmat_assign(&mat_a, row, col, value) == MATRIX_SUCCESS);
         REQUIRE(mat_a.data[row * mat_a.ncols + col] == value);
     }
-    
-    SECTION("At") {
-        int row = 0, col = 1;
-        int value;
-        REQUIRE(intmat_at(&mat_a, row, col, &value) == MATRIX_SUCCESS);
-        REQUIRE(value == 2);
-    }
 
     SECTION("Fill") {
         REQUIRE(intmat_fill(&mat_a, 7) == MATRIX_SUCCESS);
@@ -293,13 +286,6 @@ TEST_CASE("Matrix: Creation and Core Ops", "[matrix]") {
         REQUIRE(mat_assign(&mat, row, col, value) == MATRIX_SUCCESS);
         REQUIRE_THAT(mat.data[row * mat.ncols + col],
                      Catch::Matchers::WithinAbs(value, 1e-9));
-    }
-
-    SECTION("At") {
-        int row = 0, col = 1;
-        double value;
-        REQUIRE(mat_at(&mat, row, col, &value) == MATRIX_SUCCESS);
-        REQUIRE_THAT(value, Catch::Matchers::WithinAbs(3.5, 1e-9));
     }
 
     mat_destroy(&mat);
