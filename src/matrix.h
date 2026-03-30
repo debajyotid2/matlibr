@@ -54,10 +54,10 @@ typedef enum {
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Null pointer received.");      \
         abort();                                                                                             \
     }                                                                                                        \
-    if ((row) >= (matrix)->nrows || (row) < 0) {                                                             \
+    if ((int)(row) >= (int)(matrix)->nrows || (int)(row) < 0) {                                              \
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Row index out of bounds.");    \
         abort();                                                                                             \
-    } else if ((col) < 0 || (col) >= (matrix)->ncols) {                                                      \
+    } else if ((int)(col) < 0 || (int)(col) >= (int)(matrix)->ncols) {                                       \
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Column index out of bounds."); \
         abort();                                                                                             \
     }                                                                                                        \
