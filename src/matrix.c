@@ -107,14 +107,10 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE valu
 }
 
 // Copy a matrix
-#define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC, CREATE_FUNC)                      \
+#define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC)                                   \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {                         \
     if (mat==NULL || copy==NULL) {                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
-    }                                                                                           \
-    MatrixStatusCode status = CREATE_FUNC(copy, mat->nrows, mat->ncols);                        \
-    if (status != MATRIX_SUCCESS) {                                                             \
-        return status;                                                                          \
     }                                                                                           \
     COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                            \
     return MATRIX_SUCCESS;                                                                      \
@@ -655,7 +651,7 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
 
 DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
-DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_create)
+DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
@@ -727,7 +723,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
 
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
-DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_create)
+DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
