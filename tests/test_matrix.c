@@ -93,6 +93,7 @@ TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
 TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
     IntMatrix mat_a, result;
     intmat_create(&mat_a, 2, 2);
+    intmat_create(&result, 2, 2);
     mat_a.data[0] = 1;
     mat_a.data[1] = 2;
     mat_a.data[2] = 3;
@@ -102,7 +103,6 @@ TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
         REQUIRE(intmat_copy(&result, &mat_a) == MATRIX_SUCCESS);
         REQUIRE(are_int_matrices_equal(&mat_a, &result));
         REQUIRE(mat_a.data != result.data);
-        intmat_destroy(&result);
     }
 
     SECTION("Assign") {
@@ -132,6 +132,7 @@ TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
             REQUIRE(mat_a.data[i] == expected_data[i]);
     }
 
+    intmat_destroy(&result);
     intmat_destroy(&mat_a);
 }
 
