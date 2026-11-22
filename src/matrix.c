@@ -208,7 +208,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)floor(((high) - (low)) / (step));                                                 \
+    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                                                 \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
