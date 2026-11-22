@@ -703,7 +703,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
         temp_ints[i - low] = i;
     }
     for (size_t i = high - low - 1; i > 0; i--) {
-        int idx = rand_int(i);
+        int idx = rand_int(i+1);
         int temp = temp_ints[idx];
         temp_ints[idx] = temp_ints[i];
         temp_ints[i] = temp;
