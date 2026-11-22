@@ -333,7 +333,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // Addition is done as: A := A + B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL) {                                                                       \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
@@ -355,10 +355,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
+        const DATA_TYPE one = 1;                                                                        \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
-            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
-                mat->data[i*mat->ncols + j] += vec->data[i];                                            \
-            }                                                                                           \
+            AXPY_FUNC(mat->ncols, vec->data[i], &one, 0, &mat->data[i * mat->ncols], 1);                \
         }                                                                                               \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
@@ -703,7 +702,7 @@ DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
-DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int)
 DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
@@ -780,7 +779,7 @@ DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double)
 DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
