@@ -77,7 +77,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     if (nrows <= 0 || ncols <= 0) {                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Invalid 'nrows' or 'ncols'.");               \
     }                                                                                               \
-    unsigned int size = nrows * ncols;                                                              \
+    size_t size = nrows * ncols;                                                                    \
                                                                                                     \
     if (!matrix->data) {                                                                            \
         matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
@@ -167,11 +167,11 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {           
 
 // Fill a matrix from a contiguous array
 #define DEFINE_MATRIX_SET_DATA(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                               \
-MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, const DATA_TYPE* src, unsigned int count) {     \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, const DATA_TYPE* src, size_t count) {           \
     if (!matrix || !matrix->data || !src) {                                                     \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
-    unsigned int size = matrix->nrows * matrix->ncols;                                          \
+    size_t size = matrix->nrows * matrix->ncols;                                                \
     if (size != count) {                                                                        \
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                          \
                         "Source must have the same number of elements as destination.");        \
@@ -214,7 +214,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if (out==NULL) {                                                                                \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
-    unsigned int n_elem;                                                                            \
+    size_t n_elem;                                                                                  \
     MatrixStatusCode status;                                                                        \
     if ((high) <= (low)) {                                                                          \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "Upper limit cannot be <= lower limit.");         \
@@ -533,7 +533,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
 /************************************************************/
 
 // Scales a vector x := alpha * x. (?scal)
-static void iscal(const unsigned int num_elem, const int alpha, int *x,
+static void iscal(const size_t num_elem, const int alpha, int *x,
            const unsigned int incx) {
     if (x == NULL || incx == 0) {
         return;
@@ -544,7 +544,7 @@ static void iscal(const unsigned int num_elem, const int alpha, int *x,
 }
 
 // Copies a vector y := x. (?copy)
-static void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
+static void icopy(const size_t num_elem, const int *x, const unsigned int incx,
            int *y, const unsigned int incy) {
     if (x == NULL || y == NULL) {
         return;
@@ -566,7 +566,7 @@ static void icopy(const unsigned int num_elem, const int *x, const unsigned int 
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
-static void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
+static void iaxpy(const size_t num_elem, const int alpha, const int *x,
            const unsigned int incx, int *y, const unsigned int incy) {
     if (x == NULL || y == NULL) {
         return;
@@ -662,7 +662,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices.
-static void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
+static void iusga(const size_t num_elem, const int *y, const unsigned int incy,
            int *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         fprintf(stderr, "ERROR! Null pointer in array argument(s).");
@@ -676,7 +676,7 @@ static void iusga(const unsigned int num_elem, const int *y, const unsigned int 
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices. Double precision arrays supported.
-static void dusga(const unsigned int num_elem, const double *y,
+static void dusga(const size_t num_elem, const double *y,
            const unsigned int incy, double *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         fprintf(stderr, "ERROR! Null pointer in array argument(s).");

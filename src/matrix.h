@@ -27,16 +27,16 @@
 
 // Matrix for double precision data
 typedef struct {
-    unsigned int nrows, ncols;
+    size_t nrows, ncols;
     double      *data;
-    unsigned int capacity;
+    size_t capacity;
 } Matrix;
 
 // Matrix for integer data
 typedef struct {
-    unsigned int nrows, ncols;
+    size_t nrows, ncols;
     int         *data;
-    unsigned int capacity;
+    size_t capacity;
 } IntMatrix;
 
 // Operation status codes
@@ -54,7 +54,7 @@ typedef enum {
     MATRIX_ERR_INPLACE_MATMUL,
 } MatrixStatusCode;
 
-static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsigned int ncols, int row, int col, const char *func, int line) {
+static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row, int col, const char *func, int line) {
     if (matrix == NULL) {
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
         abort();
@@ -83,7 +83,7 @@ MatrixStatusCode intmat_range(IntMatrix *mat, int low, int high, int step, unsig
 MatrixStatusCode intmat_print(const IntMatrix *matrix);
 MatrixStatusCode intmat_fill(IntMatrix *matrix, const int value);
 MatrixStatusCode intmat_fill_random(IntMatrix *matrix, int low, int high, bool replace);
-MatrixStatusCode intmat_set_data(IntMatrix* matrix, const int* src, unsigned int count);
+MatrixStatusCode intmat_set_data(IntMatrix* matrix, const int* src, size_t count);
 MatrixStatusCode intmat_scale(IntMatrix *mat, const int fac);
 MatrixStatusCode intmat_add_scalar(IntMatrix *mat, const int scalar);
 MatrixStatusCode intmat_add(IntMatrix *mat_a, const IntMatrix *mat_b);
@@ -92,7 +92,7 @@ MatrixStatusCode intmat_mul(const IntMatrix *mat_a, bool transpose_a, const IntM
 MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec, unsigned int dimension, unsigned int repeats);
 MatrixStatusCode intmat_vec_add(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix *mat, const IntMatrix *vec);
-MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices, unsigned int dimension);
+MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices, size_t dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for double matrices
@@ -102,7 +102,7 @@ MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
 MatrixStatusCode mat_print(const Matrix *matrix);
 MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step, unsigned int dimension);
 MatrixStatusCode mat_fill(Matrix *matrix, const double value);
-MatrixStatusCode mat_set_data(Matrix* matrix, const double* src, unsigned int count);
+MatrixStatusCode mat_set_data(Matrix* matrix, const double* src, size_t count);
 MatrixStatusCode mat_fill_random(Matrix *matrix);
 MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means, Matrix *stds);
 MatrixStatusCode mat_scale(Matrix *mat, const double fac);
