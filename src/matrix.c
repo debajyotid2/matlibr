@@ -80,12 +80,13 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     unsigned int size = nrows * ncols;                                                              \
                                                                                                     \
     if (!matrix->data) {                                                                            \
-        matrix->data = (DATA_TYPE*)calloc(size, sizeof(DATA_TYPE));                                 \
+        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                 \
         if (!matrix->data) {                                                                        \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
         matrix->nrows = nrows;                                                                      \
         matrix->ncols = ncols;                                                                      \
+        matrix->capacity = size;                                                                    \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if (matrix->nrows == nrows && matrix->ncols == ncols) {                                         \
@@ -96,7 +97,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     }                                                                                               \
     if (size > matrix->capacity) {                                                                  \
         DATA_TYPE* new_data = (DATA_TYPE*)realloc(matrix->data, size * sizeof(DATA_TYPE));          \
-        if (!allow_resize) {                                                                        \
+        if (!new_data) {                                                                            \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Reallocation failed.");                  \
         }                                                                                           \
         matrix->data = new_data;                                                                    \
@@ -207,7 +208,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)floor(((high) - (low)) / (step));                                                 \
+    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                                                 \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -502,6 +503,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
         free(matrix->data);                                                                         \
     }                                                                                               \
     matrix->data = NULL;                                                                            \
+    matrix->nrows = 0;                                                                              \
+    matrix->ncols = 0;                                                                              \
+    matrix->capacity = 0;                                                                           \
     return MATRIX_SUCCESS;                                                                          \
 }
 
@@ -830,8 +834,8 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
-            double mean = means->data[i];
-            double std = stds->data[i];
+            double mean = means->data[j];
+            double std = stds->data[j];
             
             if (extra_present) {
                 z = extra;
