@@ -80,7 +80,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     unsigned int size = nrows * ncols;                                                              \
                                                                                                     \
     if (!matrix->data) {                                                                            \
-        matrix->data = (DATA_TYPE*)calloc(size, sizeof(DATA_TYPE));                                 \
+        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                 \
         if (!matrix->data) {                                                                        \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
