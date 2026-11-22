@@ -109,7 +109,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE valu
 // Copy a matrix
 #define DEFINE_MATRIX_COPY(FUNC_NAME, MATRIX_TYPE, COPY_FUNC)                                   \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {                         \
-    if (mat==NULL || copy==NULL) {                                                              \
+    if (mat==NULL || copy==NULL || !mat->data || !copy->data) {                                 \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                            \
