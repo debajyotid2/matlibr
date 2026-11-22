@@ -474,7 +474,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
                          "'to' must have the same number of rows as number of indices in 'indices'.");  \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
-            if (indices->data[i] >= (int)from->nrows) {                                                 \
+            if (indices->data[i] >= (int)from->nrows || indices->data[i] < 0) {                         \
                 RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
             }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
@@ -492,7 +492,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         }                                                                                               \
         for (size_t i=0; i<to->nrows; ++i) {                                                            \
             for (size_t j=0; j<to->ncols; ++j) {                                                        \
-                if (indices->data[j] >= (int)from->ncols) {                                             \
+                if (indices->data[j] >= (int)from->ncols || indices->data[j] < 0) {                     \
                     RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");     \
                 }                                                                                       \
                 to->data[i*to->ncols+j] = from->data[i*from->ncols+indices->data[j]];                   \
