@@ -1,5 +1,4 @@
 /* Library for reading, writing and manipulating matrix data.
-
   Copyright (c) 2024 Debajyoti Debnath
 
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@
 #include "matrix.h"
 
 #ifdef _WIN32
-#include <limits.h>
+#    include <limits.h>
 #endif
 
 // Generate a random integer between 0 and upper_bound
@@ -52,10 +51,10 @@ double rand_double() {
 }
 
 // Function for displaying and handling errors
-static void error_handler(const char *function, int line,
-                          MatrixStatusCode status_code, const char *msg) {
-    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function,
-            line, status_code, msg);
+static void error_handler(const char *function, int line, MatrixStatusCode status_code,
+                          const char *msg) {
+    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code,
+            msg);
 }
 
 // clang-format off
@@ -69,6 +68,47 @@ error_handler(__func__, __LINE__, status_code, msg)
         HANDLE_ERROR(status_code, msg);                 \
         return (status_code);                           \
     } while (0)
+
+// Internal use function: check if a matrix is already initialized with memory.
+// If not, allocate memory and initialize it.
+#define DEFINE_MATRIX_PREPARE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                    \
+static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, bool allow_resize) {   \
+    if (!matrix) {                                                                                  \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
+    }                                                                                               \
+    if (nrows == 0 || ncols == 0) {                                                                 \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Invalid 'nrows' or 'ncols'.");               \
+    }                                                                                               \
+    unsigned int size = nrows * ncols;                                                              \
+                                                                                                    \
+    if (!matrix->data) {                                                                            \
+        matrix->data = (DATA_TYPE*)calloc(size, sizeof(DATA_TYPE));                                 \
+        if (!matrix->data) {                                                                        \
+            RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
+        }                                                                                           \
+        matrix->nrows = nrows;                                                                      \
+        matrix->ncols = ncols;                                                                      \
+        return MATRIX_SUCCESS;                                                                      \
+    }                                                                                               \
+    if (matrix->nrows == nrows && matrix->ncols == ncols) {                                         \
+        return MATRIX_SUCCESS;                                                                      \
+    }                                                                                               \
+    if (!allow_resize) {                                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Wrong dimensions for output matrix.");      \
+    }                                                                                               \
+    if (size > matrix->capacity) {                                                                  \
+        DATA_TYPE* new_data = (DATA_TYPE*)realloc(matrix->data, size * sizeof(DATA_TYPE));          \
+        if (!allow_resize) {                                                                        \
+            RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Reallocation failed.");                  \
+        }                                                                                           \
+        matrix->data = new_data;                                                                    \
+        matrix->capacity = size;                                                                    \
+    }                                                                                               \
+    matrix->nrows = nrows;                                                                          \
+    matrix->ncols = ncols;                                                                          \
+    return MATRIX_SUCCESS;                                                                          \
+}
+
 
 // Create a matrix
 #define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                 \
@@ -653,6 +693,7 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
 
+DEFINE_MATRIX_PREPARE(intmat_prepare, IntMatrix, int)
 DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy)
@@ -729,6 +770,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
 /***************Functions for Matrix (double precision data)*************/
 /************************************************************************/
 
+DEFINE_MATRIX_PREPARE(mat_prepare, Matrix, double)
 DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy)
