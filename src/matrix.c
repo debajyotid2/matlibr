@@ -190,7 +190,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE* mat) {                            
 // Create a row (1)/column (0) vector (according to specified
 // dimension) with elements from "low" to "high"
 // (excluded) in "step" steps.
-#define DEFINE_MATRIX_RANGE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC)                         \
+#define DEFINE_MATRIX_RANGE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)                        \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,                         \
                            DATA_TYPE step, unsigned int dimension) {                                \
     if (out==NULL) {                                                                                \
@@ -210,13 +210,13 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     }                                                                                               \
     switch (dimension) {                                                                            \
     case 0:                                                                                         \
-        status = CREATE_FUNC(out, n_elem, 1);                                                       \
+        status = PREPARE_FUNC(out, n_elem, 1, true);                                                \
         if (status != MATRIX_SUCCESS) {                                                             \
             return status;                                                                          \
         }                                                                                           \
         break;                                                                                      \
     case 1:                                                                                         \
-        status = CREATE_FUNC(out, 1, n_elem);                                                       \
+        status = PREPARE_FUNC(out, 1, n_elem, true);                                                \
         if (status != MATRIX_SUCCESS) {                                                             \
             return status;                                                                          \
         }                                                                                           \
@@ -690,7 +690,7 @@ DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
-DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_create)
+DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
@@ -767,7 +767,7 @@ DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%12.06f")
-DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_create)
+DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
