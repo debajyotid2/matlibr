@@ -108,7 +108,6 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     return MATRIX_SUCCESS;                                                                          \
 }
 
-
 // Create a matrix
 #define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)                       \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                             \
@@ -163,6 +162,21 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {           
     for (size_t i=0; i<total_elements; ++i) {                                                   \
         mat->data[i] = (value);                                                                 \
     }                                                                                           \
+    return MATRIX_SUCCESS;                                                                      \
+}
+
+// Fill a matrix from a contiguous array
+#define DEFINE_MATRIX_SET_DATA(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                               \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, const DATA_TYPE* src, unsigned int count) {     \
+    if (!matrix || !matrix->data || !src) {                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
+    }                                                                                           \
+    unsigned int size = matrix->nrows * matrix->ncols;                                          \
+    if (size != count) {                                                                        \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                          \
+                        "Source must have the same number of elements as destination.");        \
+    }                                                                                           \
+    memcpy(matrix->data, src, size * sizeof(DATA_TYPE));                                        \
     return MATRIX_SUCCESS;                                                                      \
 }
 
@@ -695,6 +709,7 @@ DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_prepare)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_SET_DATA(intmat_set_data, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
@@ -772,6 +787,7 @@ DEFINE_MATRIX_CREATE(mat_create, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_prepare)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SET_DATA(mat_set_data, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%12.06f")
