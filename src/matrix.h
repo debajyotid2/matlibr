@@ -15,8 +15,8 @@
   limitations under the License.
 */
 
-#ifndef _MATRIX_H_
-#define _MATRIX_H_
+#ifndef MATRIX_H
+#define MATRIX_H
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -118,4 +118,4 @@ MatrixStatusCode mat_gather(const Matrix *from, Matrix *to,
                             const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode mat_destroy(Matrix *matrix);
 
-#endif // _MATRIX_H_
+#endif // MATRIX_H
