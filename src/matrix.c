@@ -112,6 +112,10 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {         
     if (mat==NULL || copy==NULL || !mat->data || !copy->data) {                                 \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
+    if ((copy->nrows != mat->nrows) || (copy->ncols != mat->ncols)) {                           \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                          \
+                        "Destination matrix must be of same dimensions as source.")             \
+    }                                                                                           \
     COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                            \
     return MATRIX_SUCCESS;                                                                      \
 }
