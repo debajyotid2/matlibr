@@ -580,8 +580,6 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
            const int alpha, const int *a, const unsigned int lda, const int *b,
            const unsigned int ldb, const int beta, int *c,
            const unsigned int ldc) {
-    int *a_trans = NULL;
-    int *b_trans = NULL;
     unsigned int min_lda, min_ldb, min_ldc;
     bool a_is_transposed = (transa == CblasTrans);
     bool b_is_transposed = (transb == CblasTrans);
