@@ -671,6 +671,10 @@ DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool replace) {
     int *temp_ints = NULL;
 
+    if (!mat || !mat->data) {
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Either 'mat' or 'mat->data' is a null pointer.");
+    }
+
     if (low >= high) {
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "low >= high.");
     }
