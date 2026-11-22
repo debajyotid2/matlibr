@@ -192,56 +192,56 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.");          \
     }                                                                                               \
     for (int i = 0; i < n_elem; ++i) {                                                              \
-        out->data[i] = (low) + i * (step);                                                              \
+        out->data[i] = (low) + i * (step);                                                          \
     }                                                                                               \
     return MATRIX_SUCCESS;                                                                          \
 }
 
 // Repeat a vector along a given dimension
-#define DEFINE_MATRIX_REPEAT(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC, COPY_FUNC)                 \
-MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,                               \
-                            unsigned int dimension, unsigned int repeats) {                             \
-    if (vec==NULL || repeated==NULL) {                                                                  \
-        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
-    }                                                                                                   \
-    unsigned int nidx, idx_fac, inc;                                                                    \
-    MatrixStatusCode status;                                                                            \
-    /* Check if vec is a vector */                                                                      \
-    if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Only a one dimensional vector can be repeated.");\
-    }                                                                                                   \
-    switch (dimension) {                                                                                \
-    case 0:                                                                                             \
-        if (vec->nrows != 1) {                                                                          \
-            RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a row vector along rows.");  \
-        }                                                                                               \
-        nidx = vec->ncols;                                                                              \
-        idx_fac = vec->ncols;                                                                           \
-        inc = 1;                                                                                        \
-        status = CREATE_FUNC(repeated, repeats, vec->ncols);                                            \
-        if (status != MATRIX_SUCCESS) {                                                                 \
-            return status;                                                                              \
-        }                                                                                               \
-        break;                                                                                          \
-    case 1:                                                                                             \
-        if (vec->ncols != 1) {                                                                          \
+#define DEFINE_MATRIX_REPEAT(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, CREATE_FUNC, COPY_FUNC)                  \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE* repeated, const MATRIX_TYPE *vec,                                \
+                            unsigned int dimension, unsigned int repeats) {                              \
+    if (vec==NULL || repeated==NULL) {                                                                   \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                  \
+    }                                                                                                    \
+    unsigned int nidx, idx_fac, inc;                                                                     \
+    MatrixStatusCode status;                                                                             \
+    /* Check if vec is a vector */                                                                       \
+    if (vec->nrows > 1 && vec->ncols > 1) {                                                              \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Only a one dimensional vector can be repeated."); \
+    }                                                                                                    \
+    switch (dimension) {                                                                                 \
+    case 0:                                                                                              \
+        if (vec->nrows != 1) {                                                                           \
+            RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a row vector along rows.");   \
+        }                                                                                                \
+        nidx = vec->ncols;                                                                               \
+        idx_fac = vec->ncols;                                                                            \
+        inc = 1;                                                                                         \
+        status = CREATE_FUNC(repeated, repeats, vec->ncols);                                             \
+        if (status != MATRIX_SUCCESS) {                                                                  \
+            return status;                                                                               \
+        }                                                                                                \
+        break;                                                                                           \
+    case 1:                                                                                              \
+        if (vec->ncols != 1) {                                                                           \
             RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Can only repeat a column vector along rows.");\
-        }                                                                                               \
-        nidx = vec->nrows;                                                                              \
-        idx_fac = 1;                                                                                    \
-        inc = repeats;                                                                                  \
-        status = CREATE_FUNC(repeated, vec->nrows, repeats);                                            \
-        if (status != MATRIX_SUCCESS) {                                                                 \
-            return status;                                                                              \
-        }                                                                                               \
-        break;                                                                                          \
-    default:                                                                                            \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.\n");            \
-    }                                                                                                   \
-    for (size_t i = 0; i < repeats; i++) {                                                              \
-        COPY_FUNC(nidx, vec->data, 1, &(repeated->data[idx_fac * i]), inc);                             \
-    }                                                                                                   \
-    return MATRIX_SUCCESS;                                                                              \
+        }                                                                                                \
+        nidx = vec->nrows;                                                                               \
+        idx_fac = 1;                                                                                     \
+        inc = repeats;                                                                                   \
+        status = CREATE_FUNC(repeated, vec->nrows, repeats);                                             \
+        if (status != MATRIX_SUCCESS) {                                                                  \
+            return status;                                                                               \
+        }                                                                                                \
+        break;                                                                                           \
+    default:                                                                                             \
+        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.\n");             \
+    }                                                                                                    \
+    for (size_t i = 0; i < repeats; i++) {                                                               \
+        COPY_FUNC(nidx, vec->data, 1, &(repeated->data[idx_fac * i]), inc);                              \
+    }                                                                                                    \
+    return MATRIX_SUCCESS;                                                                               \
 }
 
 // Add a scalar to a matrix
@@ -255,7 +255,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
     }                                                                                                   \
     int nelem = mat->nrows * mat->ncols;                                                                \
     for (int i=0; i<nelem; ++i) {                                                                       \
-        mat->data[i] += (scalar);                                                                         \
+        mat->data[i] += (scalar);                                                                       \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
 }
@@ -435,10 +435,10 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
                      "'to' must have the same number of columns as number of indices in 'indices'.");   \
         }                                                                                               \
         for (size_t i=0; i<to->nrows; ++i) {                                                            \
-            if (indices->data[i] >= from->ncols) {                                                      \
-                RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
-            }                                                                                           \
             for (size_t j=0; j<to->ncols; ++j) {                                                        \
+                if (indices->data[j] >= from->ncols) {                                                  \
+                    RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");     \
+                }                                                                                       \
                 to->data[i*to->ncols+j] = from->data[i*from->ncols+indices->data[j]];                   \
             }                                                                                           \
         }                                                                                               \
