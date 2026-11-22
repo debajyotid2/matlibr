@@ -97,7 +97,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     }                                                                                               \
     if (size > matrix->capacity) {                                                                  \
         DATA_TYPE* new_data = (DATA_TYPE*)realloc(matrix->data, size * sizeof(DATA_TYPE));          \
-        if (!allow_resize) {                                                                        \
+        if (!new_data) {                                                                            \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Reallocation failed.");                  \
         }                                                                                           \
         matrix->data = new_data;                                                                    \
