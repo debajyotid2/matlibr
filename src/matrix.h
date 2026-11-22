@@ -15,23 +15,27 @@
   limitations under the License.
 */
 
-#ifndef _MATRIX_H_
-#define _MATRIX_H_
+#ifndef MATRIX_H
+#define MATRIX_H
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MATRIX_INIT {0}
+
 // Matrix for double precision data
 typedef struct {
     unsigned int nrows, ncols;
     double      *data;
+    unsigned int capacity;
 } Matrix;
 
 // Matrix for integer data
 typedef struct {
     unsigned int nrows, ncols;
     int         *data;
+    unsigned int capacity;
 } IntMatrix;
 
 // Operation status codes
@@ -45,50 +49,46 @@ typedef enum {
     MATRIX_ERR_RANGE_INVALID_STEP,
     MATRIX_ERR_INDEX_OUT_OF_BOUNDS,
     MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE,
-    MATRIX_ERROR_ZERO_STD_DEV
+    MATRIX_ERR_ZERO_STD_DEV,
+    MATRIX_ERR_INPLACE_MATMUL,
 } MatrixStatusCode;
 
+static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsigned int ncols, int row, int col, const char *func, int line) {
+    if (matrix == NULL) {
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
+        abort();
+    }
+    if ((int)row >= (int)nrows || (int)row < 0) {
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Row index out of bounds.");
+        abort();
+    } else if ((int)col < 0 || (int)col >= (int)ncols) {
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Column index out of bounds.");
+        abort();
+    }
+    return ncols * (size_t)row + (size_t)col;
+}
+
 // Matrix elementwise access
-#define MATRIX_AT(matrix, row, col) ({                                                                       \
-    if ((matrix) == NULL) {                                                                                  \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Null pointer received.");      \
-        abort();                                                                                             \
-    }                                                                                                        \
-    if ((int)(row) >= (int)(matrix)->nrows || (int)(row) < 0) {                                              \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Row index out of bounds.");    \
-        abort();                                                                                             \
-    } else if ((int)(col) < 0 || (int)(col) >= (int)(matrix)->ncols) {                                       \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Column index out of bounds."); \
-        abort();                                                                                             \
-    }                                                                                                        \
-    (matrix)->data[(matrix)->ncols * (row) + (col)];                                                         \
-})
+#define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func_, __LINE__)])
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
-MatrixStatusCode intmat_assign(IntMatrix *matrix, int nrow, int ncol,
-                               int value);
+MatrixStatusCode intmat_assign(IntMatrix *matrix, int nrow, int ncol, int value);
 MatrixStatusCode intmat_copy(IntMatrix *copy, const IntMatrix *mat);
-MatrixStatusCode intmat_range(IntMatrix *mat, int low, int high, int step,
-                              unsigned int dimension);
+MatrixStatusCode intmat_range(IntMatrix *mat, int low, int high, int step, unsigned int dimension);
 MatrixStatusCode intmat_print(const IntMatrix *matrix);
 MatrixStatusCode intmat_fill(IntMatrix *matrix, const int value);
-MatrixStatusCode intmat_fill_random(IntMatrix *matrix, int low, int high,
-                                    bool replace);
+MatrixStatusCode intmat_fill_random(IntMatrix *matrix, int low, int high, bool replace);
 MatrixStatusCode intmat_scale(IntMatrix *mat, const int fac);
 MatrixStatusCode intmat_add_scalar(IntMatrix *mat, const int scalar);
 MatrixStatusCode intmat_add(IntMatrix *mat_a, const IntMatrix *mat_b);
 MatrixStatusCode intmat_sub(IntMatrix *mat_a, const IntMatrix *mat_b);
-MatrixStatusCode intmat_mul(const IntMatrix *mat_a, bool transpose_a,
-                            const IntMatrix *mat_b, bool transpose_b,
-                            IntMatrix *result);
-MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec,
-                               unsigned int dimension, unsigned int repeats);
+MatrixStatusCode intmat_mul(const IntMatrix *mat_a, bool transpose_a, const IntMatrix *mat_b, bool transpose_b, IntMatrix *result);
+MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec, unsigned int dimension, unsigned int repeats);
 MatrixStatusCode intmat_vec_add(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix *mat, const IntMatrix *vec);
-MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to,
-                               const IntMatrix *indices,
-                               unsigned int     dimension);
+MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for double matrices
@@ -96,26 +96,21 @@ MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
 MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
 MatrixStatusCode mat_print(const Matrix *matrix);
-MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step,
-                           unsigned int dimension);
+MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step, unsigned int dimension);
 MatrixStatusCode mat_fill(Matrix *matrix, const double value);
 MatrixStatusCode mat_fill_random(Matrix *matrix);
-MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means,
-                                          Matrix *stds);
+MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means, Matrix *stds);
 MatrixStatusCode mat_scale(Matrix *mat, const double fac);
 MatrixStatusCode mat_abs_sum(double *sum, Matrix *mat);
 MatrixStatusCode mat_norm(double *norm, Matrix *mat);
 MatrixStatusCode mat_add_scalar(Matrix *mat, const double scalar);
 MatrixStatusCode mat_add(Matrix *mat_a, const Matrix *mat_b);
 MatrixStatusCode mat_sub(Matrix *mat_a, const Matrix *mat_b);
-MatrixStatusCode mat_mul(const Matrix *mat_a, bool transpose_a,
-                         const Matrix *mat_b, bool transpose_b, Matrix *result);
-MatrixStatusCode mat_repeat(Matrix *repeated, const Matrix *vec,
-                            unsigned int dimension, unsigned int repeats);
+MatrixStatusCode mat_mul(const Matrix *mat_a, bool transpose_a, const Matrix *mat_b, bool transpose_b, Matrix *result);
+MatrixStatusCode mat_repeat(Matrix *repeated, const Matrix *vec, unsigned int dimension, unsigned int repeats);
 MatrixStatusCode mat_vec_add(Matrix *mat, const Matrix *vec);
 MatrixStatusCode mat_vec_sub(Matrix *mat, const Matrix *vec);
-MatrixStatusCode mat_gather(const Matrix *from, Matrix *to,
-                            const IntMatrix *indices, unsigned int dimension);
+MatrixStatusCode mat_gather(const Matrix *from, Matrix *to, const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode mat_destroy(Matrix *matrix);
 
-#endif // _MATRIX_H_
+#endif // MATRIX_H

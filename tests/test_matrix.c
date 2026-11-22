@@ -35,8 +35,7 @@ bool are_int_matrices_equal(const IntMatrix *a, const IntMatrix *b) {
 }
 
 // Checks if two double Matrix instances are equal within a tolerance.
-bool are_double_matrices_equal(const Matrix *a, const Matrix *b,
-                               double epsilon) {
+bool are_double_matrices_equal(const Matrix *a, const Matrix *b, double epsilon) {
     if (a == NULL || b == NULL)
         return false;
     if (a->nrows != b->nrows || a->ncols != b->ncols)
@@ -60,7 +59,7 @@ int compare_ints(const void *a, const void *b) {
 }
 
 TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
-    IntMatrix mat;
+    IntMatrix mat = MATRIX_INIT;
 
     SECTION("Creation with valid dimensions") {
         REQUIRE(intmat_create(&mat, 3, 4) == MATRIX_SUCCESS);
@@ -78,9 +77,7 @@ TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
         REQUIRE(intmat_create(&mat, -1, 5) == MATRIX_ERR_INVALID_DIMENSION);
     }
 
-    SECTION("Creation with null pointer") {
-        REQUIRE(intmat_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR);
-    }
+    SECTION("Creation with null pointer") { REQUIRE(intmat_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR); }
 
     SECTION("Destruction") {
         intmat_create(&mat, 2, 2);
@@ -91,7 +88,8 @@ TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
 }
 
 TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
-    IntMatrix mat_a, result;
+    IntMatrix mat_a = MATRIX_INIT;
+    IntMatrix result = MATRIX_INIT;
     intmat_create(&mat_a, 2, 2);
     intmat_create(&result, 2, 2);
     mat_a.data[0] = 1;
@@ -137,7 +135,7 @@ TEST_CASE("IntMatrix: Core Operations", "[intmatrix]") {
 }
 
 TEST_CASE("IntMatrix: Random Fill", "[intmatrix]") {
-    IntMatrix mat;
+    IntMatrix mat = MATRIX_INIT;
     intmat_create(&mat, 4, 5);
 
     SECTION("Fill random with replacement") {
@@ -170,17 +168,18 @@ TEST_CASE("IntMatrix: Random Fill", "[intmatrix]") {
     }
 
     SECTION("Error cases for random fill") {
-        REQUIRE(intmat_fill_random(&mat, 10, 5, false) ==
-                MATRIX_ERR_RANGE_INVALID);
-        REQUIRE(intmat_fill_random(&mat, 0, 19, false) ==
-                MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE);
+        REQUIRE(intmat_fill_random(&mat, 10, 5, false) == MATRIX_ERR_RANGE_INVALID);
+        REQUIRE(intmat_fill_random(&mat, 0, 19, false) == MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE);
     }
 
     intmat_destroy(&mat);
 }
 
 TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
-    IntMatrix mat_a, mat_b, result, expected_mat;
+    IntMatrix mat_a = MATRIX_INIT;
+    IntMatrix mat_b = MATRIX_INIT;
+    IntMatrix result = MATRIX_INIT;
+    IntMatrix expected_mat = MATRIX_INIT;
     intmat_create(&mat_a, 2, 2);
     intmat_create(&mat_b, 2, 2);
     mat_a.data[0] = 1;
@@ -212,8 +211,7 @@ TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
 
     SECTION("Multiplication") {
         intmat_create(&result, 2, 2);
-        REQUIRE(intmat_mul(&mat_a, false, &mat_b, false, &result) ==
-                MATRIX_SUCCESS);
+        REQUIRE(intmat_mul(&mat_a, false, &mat_b, false, &result) == MATRIX_SUCCESS);
         intmat_create(&expected_mat, 2, 2);
         int expected_data[] = {19, 22, 43, 50};
         memcpy(expected_mat.data, expected_data, 4 * sizeof(int));
@@ -227,7 +225,11 @@ TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
 }
 
 TEST_CASE("IntMatrix: Vector Operations", "[intmatrix]") {
-    IntMatrix mat, vec, result, expected_mat;
+    IntMatrix mat = MATRIX_INIT;
+    IntMatrix vec = MATRIX_INIT;
+    IntMatrix result = MATRIX_INIT;
+    IntMatrix expected_mat = MATRIX_INIT;
+
     intmat_create(&mat, 2, 3);
     for (int i = 0; i < 6; ++i)
         mat.data[i] = 1;
@@ -274,7 +276,7 @@ TEST_CASE("IntMatrix: Vector Operations", "[intmatrix]") {
 }
 
 TEST_CASE("Matrix: Creation and Core Ops", "[matrix]") {
-    Matrix mat;
+    Matrix mat = MATRIX_INIT;
     mat_create(&mat, 2, 2);
     REQUIRE(mat_fill(&mat, 3.5) == MATRIX_SUCCESS);
     for (int i = 0; i < 4; ++i) {
@@ -285,15 +287,14 @@ TEST_CASE("Matrix: Creation and Core Ops", "[matrix]") {
         int    row = 0, col = 1;
         double value = 42.0;
         REQUIRE(mat_assign(&mat, row, col, value) == MATRIX_SUCCESS);
-        REQUIRE_THAT(mat.data[row * mat.ncols + col],
-                     Catch::Matchers::WithinAbs(value, 1e-9));
+        REQUIRE_THAT(mat.data[row * mat.ncols + col], Catch::Matchers::WithinAbs(value, 1e-9));
     }
 
     mat_destroy(&mat);
 }
 
 TEST_CASE("Matrix: Scalar and Arithmetic Operations", "[matrix]") {
-    Matrix mat;
+    Matrix mat = MATRIX_INIT;
     mat_create(&mat, 2, 3);
     for (int i = 0; i < 6; ++i)
         mat.data[i] = 1.5;
@@ -306,7 +307,7 @@ TEST_CASE("Matrix: Scalar and Arithmetic Operations", "[matrix]") {
     }
 
     SECTION("Addition") {
-        Matrix mat_b;
+        Matrix mat_b = MATRIX_INIT;
         mat_create(&mat_b, 2, 3);
         mat_fill(&mat_b, 0.5);
         REQUIRE(mat_add(&mat, &mat_b) == MATRIX_SUCCESS);
@@ -320,8 +321,12 @@ TEST_CASE("Matrix: Scalar and Arithmetic Operations", "[matrix]") {
 }
 
 TEST_CASE("Matrix: Vector Operations", "[matrix]") {
-    Matrix    mat, vec_row, vec_col, result, expected_mat;
-    IntMatrix indices;
+    Matrix    mat = MATRIX_INIT;
+    Matrix    vec_row = MATRIX_INIT;
+    Matrix    vec_col = MATRIX_INIT;
+    Matrix    result = MATRIX_INIT;
+    Matrix    expected_mat = MATRIX_INIT;
+    IntMatrix indices = MATRIX_INIT;
     double    tol = 1.0e-9;
 
     mat_create(&mat, 2, 3);
@@ -387,8 +392,7 @@ TEST_CASE("Matrix: Vector Operations", "[matrix]") {
         REQUIRE(are_double_matrices_equal(&result, &expected_mat, tol));
 
         indices.data[0] = 3;
-        REQUIRE(mat_gather(&mat, &result, &indices, 1) ==
-                MATRIX_ERR_INDEX_OUT_OF_BOUNDS);
+        REQUIRE(mat_gather(&mat, &result, &indices, 1) == MATRIX_ERR_INDEX_OUT_OF_BOUNDS);
         intmat_destroy(&indices);
         mat_destroy(&result);
         mat_destroy(&expected_mat);
@@ -400,7 +404,7 @@ TEST_CASE("Matrix: Vector Operations", "[matrix]") {
 }
 
 TEST_CASE("Matrix: BLAS-based Functions", "[matrix]") {
-    Matrix mat;
+    Matrix mat = MATRIX_INIT;
     mat_create(&mat, 2, 3);
     mat.data[0] = -1.0;
     mat.data[1] = 2.0;
@@ -419,15 +423,16 @@ TEST_CASE("Matrix: BLAS-based Functions", "[matrix]") {
         double norm = 0.0;
         REQUIRE(mat_norm(&norm, &mat) == MATRIX_SUCCESS);
         double expected_norm_sq = 1.0 + 4.0 + 9.0 + 16.0 + 25.0 + 36.0; // 91.0
-        REQUIRE_THAT(norm,
-                     Catch::Matchers::WithinAbs(sqrt(expected_norm_sq), 1e-9));
+        REQUIRE_THAT(norm, Catch::Matchers::WithinAbs(sqrt(expected_norm_sq), 1e-9));
     }
 
     mat_destroy(&mat);
 }
 
 TEST_CASE("Matrix: Random Fill", "[matrix]") {
-    Matrix mat, means, stds;
+    Matrix mat = MATRIX_INIT;
+    Matrix means = MATRIX_INIT;
+    Matrix stds = MATRIX_INIT;
     mat_create(&mat, 10, 10);
 
     SECTION("Uniform random") {
@@ -444,8 +449,7 @@ TEST_CASE("Matrix: Random Fill", "[matrix]") {
         mat_fill(&means, 5.0);
         mat_fill(&stds, 2.0);
 
-        REQUIRE(mat_fill_random_gaussian(&mat, &means, &stds) ==
-                MATRIX_SUCCESS);
+        REQUIRE(mat_fill_random_gaussian(&mat, &means, &stds) == MATRIX_SUCCESS);
         double sum = 0;
         for (size_t i = 0; i < 100; ++i)
             sum += mat.data[i];

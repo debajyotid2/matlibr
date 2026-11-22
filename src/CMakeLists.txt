@@ -1,4 +1,3 @@
-
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_ROOT_DIR}/src/*.c)
 add_library(${PROJECT_LIBRARY_NAME} STATIC ${SOURCE_FILES})
 
@@ -11,3 +10,9 @@ target_include_directories(${PROJECT_LIBRARY_NAME} PUBLIC
 )
 target_include_directories(${PROJECT_LIBRARY_NAME} PRIVATE ${PROJECT_ROOT_DIR}/third_party/OpenBLAS-0.3.28)
 target_link_libraries(${PROJECT_LIBRARY_NAME} PRIVATE m dl ${OPENBLAS_LIBRARIES})
+
+target_compile_options(${PROJECT_LIBRARY_NAME} PRIVATE
+    $<$<C_COMPILER_ID:GNU,CLang>:-Wall -Wextra -pedantic>
+    $<$<C_COMPILER_ID:MSVC>:/W4 /permissive->
+)
+
