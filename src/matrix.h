@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation faults.
 #define MATRIX_INIT {0}
 
 // Matrix for double precision data
@@ -69,6 +70,8 @@ static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsi
 }
 
 // Matrix elementwise access
+// NOTE: Do not call this with an expression in place of `matrix`, otherwise the result might be
+// undefined as the `matrix` argument is evaluated four times in the macro expansion.
 #define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
     (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func__, __LINE__)])
 
