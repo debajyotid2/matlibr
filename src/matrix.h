@@ -70,7 +70,7 @@ static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsi
 
 // Matrix elementwise access
 #define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
-    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func_, __LINE__)])
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func__, __LINE__)])
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
