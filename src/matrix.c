@@ -834,8 +834,8 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
-            double mean = means->data[i];
-            double std = stds->data[i];
+            double mean = means->data[j];
+            double std = stds->data[j];
             
             if (extra_present) {
                 z = extra;
