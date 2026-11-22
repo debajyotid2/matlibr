@@ -49,7 +49,8 @@ typedef enum {
     MATRIX_ERR_RANGE_INVALID_STEP,
     MATRIX_ERR_INDEX_OUT_OF_BOUNDS,
     MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE,
-    MATRIX_ERROR_ZERO_STD_DEV
+    MATRIX_ERROR_ZERO_STD_DEV,
+    MATRIX_ERR_INPLACE_MATMUL,
 } MatrixStatusCode;
 
 static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsigned int ncols, int row, int col, const char *func, int line) {

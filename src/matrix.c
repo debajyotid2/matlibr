@@ -399,12 +399,18 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // after transforming them. Matrix dimensions must be such that
 //     dim(transform(A)) = m x k
 //     dim(transform(B)) = k' x n
-#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, FILL_FUNC)                      \
+#define DEFINE_MATRIX_MUL(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, GEMM_FUNC, PREPARE_FUNC)                   \
 MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,                                  \
                            const MATRIX_TYPE *mat_b, bool transpose_b,                                  \
                            MATRIX_TYPE *result) {                                                       \
     if (mat_a==NULL || mat_b==NULL || result==NULL) {                                                   \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer.");                                      \
+    }                                                                                                   \
+    if (mat_a->data==NULL || mat_b->data==NULL) {                                                       \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer in data.");                              \
+    }                                                                                                   \
+    if (result == mat_a || result == mat_b) {                                                           \
+        RETURN_ON_ERROR(MATRIX_ERR_INPLACE_MATMUL, "Inplace matrix multiplication not supported.");     \
     }                                                                                                   \
     unsigned int m, n, k, k_prime;                                                                      \
     DATA_TYPE alpha = 1, beta = 0;                                                                      \
@@ -420,10 +426,10 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
             "IntMatrix dimensions must satisfy k = k' for multiplying m "                               \
             "x k and k' x n matrices.");                                                                \
     }                                                                                                   \
-    if (result->nrows != m || result->ncols != n) {                                                     \
-        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Incorrect dimensions of result matrix.");       \
+    MatrixStatusCode res = PREPARE_FUNC(result, m, n, false);                                           \
+    if (res != MATRIX_SUCCESS) {                                                                        \
+        return res;                                                                                     \
     }                                                                                                   \
-    FILL_FUNC(result, (DATA_TYPE)0);                                                                    \
     GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, mat_a->ncols, mat_b->data,                 \
               mat_b->ncols, beta, result->data, n);                                                     \
     return MATRIX_SUCCESS;                                                                              \
@@ -696,7 +702,7 @@ DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
-DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_fill)
+DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
@@ -773,7 +779,7 @@ DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_fill)
+DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
