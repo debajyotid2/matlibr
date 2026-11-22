@@ -820,7 +820,7 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
             double std = stds->data[j];
 
             if (std == 0.0) {
-                RETURN_ON_ERROR(MATRIX_ERROR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
+                RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
             }
 
             // Use Box-Muller transform to generate the random number
