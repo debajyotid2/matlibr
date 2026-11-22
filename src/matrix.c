@@ -503,6 +503,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
         free(matrix->data);                                                                         \
     }                                                                                               \
     matrix->data = NULL;                                                                            \
+    matrix->nrows = 0;                                                                              \
+    matrix->ncols = 0;                                                                              \
+    matrix->capacity = 0;                                                                           \
     return MATRIX_SUCCESS;                                                                          \
 }
 
