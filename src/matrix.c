@@ -77,10 +77,10 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     if (nrows <= 0 || ncols <= 0) {                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Invalid 'nrows' or 'ncols'.");               \
     }                                                                                               \
-    unsigned int size = nrows * ncols;                                                              \
+    size_t size = nrows * ncols;                                                                    \
                                                                                                     \
     if (!matrix->data) {                                                                            \
-        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                 \
+        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
         if (!matrix->data) {                                                                        \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
@@ -89,7 +89,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
         matrix->capacity = size;                                                                    \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
-    if (matrix->nrows == nrows && matrix->ncols == ncols) {                                         \
+    if ((int)matrix->nrows == nrows && (int)matrix->ncols == ncols) {                               \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if (!allow_resize) {                                                                            \
@@ -108,7 +108,6 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     return MATRIX_SUCCESS;                                                                          \
 }
 
-
 // Create a matrix
 #define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)                       \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                             \
@@ -126,10 +125,10 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE valu
     if (matrix == NULL) {                                                                       \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
-    if (row >= matrix->nrows || row < 0) {                                                      \
+    if (row >= (int)matrix->nrows || row < 0) {                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
     }                                                                                           \
-    if (col >= matrix->ncols || col < 0) {                                                      \
+    if (col >= (int)matrix->ncols || col < 0) {                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
     }                                                                                           \
     matrix->data[row * matrix->ncols + col] = value;                                            \
@@ -163,6 +162,21 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* mat, const DATA_TYPE value) {           
     for (size_t i=0; i<total_elements; ++i) {                                                   \
         mat->data[i] = (value);                                                                 \
     }                                                                                           \
+    return MATRIX_SUCCESS;                                                                      \
+}
+
+// Fill a matrix from a contiguous array
+#define DEFINE_MATRIX_SET_DATA(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                               \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, const DATA_TYPE* src, size_t count) {           \
+    if (!matrix || !matrix->data || !src) {                                                     \
+        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
+    }                                                                                           \
+    size_t size = matrix->nrows * matrix->ncols;                                                \
+    if (size != count) {                                                                        \
+        RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                          \
+                        "Source must have the same number of elements as destination.");        \
+    }                                                                                           \
+    memcpy(matrix->data, src, size * sizeof(DATA_TYPE));                                        \
     return MATRIX_SUCCESS;                                                                      \
 }
 
@@ -200,7 +214,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if (out==NULL) {                                                                                \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
-    unsigned int n_elem;                                                                            \
+    size_t n_elem;                                                                                  \
     MatrixStatusCode status;                                                                        \
     if ((high) <= (low)) {                                                                          \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID, "Upper limit cannot be <= lower limit.");         \
@@ -208,7 +222,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                                                 \
+    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                          \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -228,7 +242,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     default:                                                                                        \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.");          \
     }                                                                                               \
-    for (int i = 0; i < n_elem; ++i) {                                                              \
+    for (int i = 0; i < (int)n_elem; ++i) {                                                         \
         out->data[i] = (low) + i * (step);                                                          \
     }                                                                                               \
     return MATRIX_SUCCESS;                                                                          \
@@ -301,7 +315,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
 // Addition is performed as A := A+B
 #define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
-    if (mat_a==NULL || mat_b==NULL) {                                                                   \
+    if (mat_a==NULL || mat_b==NULL || !mat_a->data || !mat_b->data) {                                   \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
@@ -317,7 +331,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // Subtraction is performed as A := A - B
 #define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
-    if (mat_a==NULL || mat_b==NULL) {                                                                   \
+    if (mat_a==NULL || mat_b==NULL || !mat_a->data || !mat_b->data) {                                   \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
@@ -333,9 +347,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // Addition is done as: A := A + B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
-    if (mat==NULL || vec==NULL) {                                                                       \
+    if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
@@ -355,10 +369,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
+        const DATA_TYPE one = 1;                                                                        \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
-            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
-                mat->data[i*mat->ncols + j] += vec->data[i];                                            \
-            }                                                                                           \
+            AXPY_FUNC(mat->ncols, vec->data[i], &one, 0, &mat->data[i * mat->ncols], 1);                \
         }                                                                                               \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
@@ -370,7 +383,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // of dimensions as required to match A's dimensions.
 #define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
-    if (mat==NULL || vec==NULL) {                                                                       \
+    if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
@@ -461,7 +474,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
                          "'to' must have the same number of rows as number of indices in 'indices'.");  \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
-            if (indices->data[i] >= from->nrows) {                                                      \
+            if (indices->data[i] >= (int)from->nrows || indices->data[i] < 0) {                         \
                 RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
             }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
@@ -479,7 +492,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         }                                                                                               \
         for (size_t i=0; i<to->nrows; ++i) {                                                            \
             for (size_t j=0; j<to->ncols; ++j) {                                                        \
-                if (indices->data[j] >= from->ncols) {                                                  \
+                if (indices->data[j] >= (int)from->ncols || indices->data[j] < 0) {                     \
                     RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");     \
                 }                                                                                       \
                 to->data[i*to->ncols+j] = from->data[i*from->ncols+indices->data[j]];                   \
@@ -520,7 +533,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
 /************************************************************/
 
 // Scales a vector x := alpha * x. (?scal)
-static void iscal(const unsigned int num_elem, const int alpha, int *x,
+static void iscal(const size_t num_elem, const int alpha, int *x,
            const unsigned int incx) {
     if (x == NULL || incx == 0) {
         return;
@@ -531,7 +544,7 @@ static void iscal(const unsigned int num_elem, const int alpha, int *x,
 }
 
 // Copies a vector y := x. (?copy)
-static void icopy(const unsigned int num_elem, const int *x, const unsigned int incx,
+static void icopy(const size_t num_elem, const int *x, const unsigned int incx,
            int *y, const unsigned int incy) {
     if (x == NULL || y == NULL) {
         return;
@@ -553,7 +566,7 @@ static void icopy(const unsigned int num_elem, const int *x, const unsigned int 
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
-static void iaxpy(const unsigned int num_elem, const int alpha, const int *x,
+static void iaxpy(const size_t num_elem, const int alpha, const int *x,
            const unsigned int incx, int *y, const unsigned int incy) {
     if (x == NULL || y == NULL) {
         return;
@@ -580,8 +593,6 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
            const int alpha, const int *a, const unsigned int lda, const int *b,
            const unsigned int ldb, const int beta, int *c,
            const unsigned int ldc) {
-    int *a_trans = NULL;
-    int *b_trans = NULL;
     unsigned int min_lda, min_ldb, min_ldc;
     bool a_is_transposed = (transa == CblasTrans);
     bool b_is_transposed = (transb == CblasTrans);
@@ -651,7 +662,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices.
-static void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
+static void iusga(const size_t num_elem, const int *y, const unsigned int incy,
            int *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         fprintf(stderr, "ERROR! Null pointer in array argument(s).");
@@ -665,7 +676,7 @@ static void iusga(const unsigned int num_elem, const int *y, const unsigned int 
 // Sparse BLAS-like function for gathering elements from a
 // sparse storage vector to a dense storage vector according
 // to supplied indices. Double precision arrays supported.
-static void dusga(const unsigned int num_elem, const double *y,
+static void dusga(const size_t num_elem, const double *y,
            const unsigned int incy, double *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
         fprintf(stderr, "ERROR! Null pointer in array argument(s).");
@@ -698,6 +709,7 @@ DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_prepare)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
+DEFINE_MATRIX_SET_DATA(intmat_set_data, IntMatrix, int)
 DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
 DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
 DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
@@ -705,7 +717,7 @@ DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
-DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int)
 DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
@@ -775,6 +787,7 @@ DEFINE_MATRIX_CREATE(mat_create, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_prepare)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
+DEFINE_MATRIX_SET_DATA(mat_set_data, Matrix, double)
 DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
 DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
 DEFINE_MATRIX_PRINT(mat_print, Matrix, "%12.06f")
@@ -782,7 +795,7 @@ DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double)
 DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
@@ -791,7 +804,7 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 MatrixStatusCode mat_fill_random(Matrix *mat) {
-    if (mat == NULL) {
+    if (mat == NULL || !mat->data) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
 
@@ -863,7 +876,7 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 
 // Sum of absolute values of matrix elements
 MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
-    if (mat == NULL || sum==NULL) {
+    if (mat == NULL || !mat->data || sum==NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
 
@@ -874,7 +887,7 @@ MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
 // Euclidean norm of a matrix across all rows and
 // columns.
 MatrixStatusCode mat_norm(double* norm, Matrix *mat) {
-    if (mat == NULL || norm==NULL) {
+    if (mat == NULL || !mat->data || norm==NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
     *norm = cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);

@@ -175,6 +175,65 @@ TEST_CASE("IntMatrix: Random Fill", "[intmatrix]") {
     intmat_destroy(&mat);
 }
 
+TEST_CASE("IntMatrix: Set Data", "[intmatrix]") {
+    IntMatrix mat = MATRIX_INIT;
+    intmat_create(&mat, 2, 3);
+
+    SECTION("Assign flat array in row-major order") {
+        const int src[6] = {10, 20, 30, 40, 50, 60};
+        REQUIRE(intmat_set_data(&mat, src, 6) == MATRIX_SUCCESS);
+
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == src[i]);
+        }
+        // Verify 2D row-major mapping (2 rows x 3 cols)
+        REQUIRE(MATRIX_AT(&mat, 0, 2) == 30);
+        REQUIRE(MATRIX_AT(&mat, 1, 0) == 40);
+        REQUIRE(MATRIX_AT(&mat, 1, 2) == 60);
+    }
+
+    SECTION("Overwrite existing matrix data") {
+        intmat_fill(&mat, 99);
+        const int src[6] = {-1, -2, -3, -4, -5, -6};
+
+        REQUIRE(intmat_set_data(&mat, src, 6) == MATRIX_SUCCESS);
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == src[i]);
+        }
+    }
+
+    intmat_destroy(&mat);
+}
+
+TEST_CASE("IntMatrix: Set Data Error Cases", "[intmatrix]") {
+    IntMatrix mat = MATRIX_INIT;
+    intmat_create(&mat, 2, 3);
+    const int src[6] = {1, 2, 3, 4, 5, 6};
+
+    SECTION("Null pointer handling") {
+        IntMatrix mat_b = MATRIX_INIT;
+
+        REQUIRE(intmat_set_data(NULL, src, 6) == MATRIX_ERR_NULL_PTR);
+        REQUIRE(intmat_set_data(&mat_b, src, 6) == MATRIX_ERR_NULL_PTR);
+        REQUIRE(intmat_set_data(&mat, NULL, 6) == MATRIX_ERR_NULL_PTR);
+    }
+
+    SECTION("Element count mismatch") {
+        intmat_fill(&mat, 42);
+
+        REQUIRE(intmat_set_data(&mat, src, 5) == MATRIX_ERR_DIMENSION_MISMATCH);
+        REQUIRE(intmat_set_data(&mat, src, 7) == MATRIX_ERR_DIMENSION_MISMATCH);
+        REQUIRE(intmat_set_data(&mat, src, 0) == MATRIX_ERR_DIMENSION_MISMATCH);
+
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == 42);
+        }
+    }
+
+    intmat_destroy(&mat);
+}
+
+
 TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
     IntMatrix mat_a = MATRIX_INIT;
     IntMatrix mat_b = MATRIX_INIT;
@@ -424,6 +483,63 @@ TEST_CASE("Matrix: BLAS-based Functions", "[matrix]") {
         REQUIRE(mat_norm(&norm, &mat) == MATRIX_SUCCESS);
         double expected_norm_sq = 1.0 + 4.0 + 9.0 + 16.0 + 25.0 + 36.0; // 91.0
         REQUIRE_THAT(norm, Catch::Matchers::WithinAbs(sqrt(expected_norm_sq), 1e-9));
+    }
+
+    mat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Set Data", "[matrix]") {
+    Matrix mat = MATRIX_INIT;
+    mat_create(&mat, 3, 2);
+
+    SECTION("Fill with flat array") {
+        const double src[6] = {1.5, -2.25, 3.0, 4.75, -5.5, 6.125};
+        REQUIRE(mat_set_data(&mat, src, 6) == MATRIX_SUCCESS);
+
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == src[i]);
+        }
+        REQUIRE(MATRIX_AT(&mat, 0, 1) == -2.25);
+        REQUIRE(MATRIX_AT(&mat, 1, 0) == 3.0);
+        REQUIRE(MATRIX_AT(&mat, 2, 1) == 6.125);
+    }
+
+    SECTION("Overwrite existing matrix data") {
+        mat_fill(&mat, 7.5);
+        const double src[6] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6};
+
+        REQUIRE(mat_set_data(&mat, src, 6) == MATRIX_SUCCESS);
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == src[i]);
+        }
+    }
+
+    mat_destroy(&mat);
+}
+
+TEST_CASE("Matrix: Set Data Error Cases", "[matrix]") {
+    Matrix mat = MATRIX_INIT;
+    mat_create(&mat, 3, 2);
+    const double src[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    SECTION("Null pointer handling") {
+        Matrix mat_b = MATRIX_INIT;
+
+        REQUIRE(mat_set_data(NULL, src, 6) == MATRIX_ERR_NULL_PTR);
+        REQUIRE(mat_set_data(&mat_b, src, 6) == MATRIX_ERR_NULL_PTR);
+        REQUIRE(mat_set_data(&mat, NULL, 6) == MATRIX_ERR_NULL_PTR);
+    }
+
+    SECTION("Element count mismatch") {
+        mat_fill(&mat, 3.14);
+
+        REQUIRE(mat_set_data(&mat, src, 4) == MATRIX_ERR_DIMENSION_MISMATCH);
+        REQUIRE(mat_set_data(&mat, src, 10) == MATRIX_ERR_DIMENSION_MISMATCH);
+        REQUIRE(mat_set_data(&mat, src, 0) == MATRIX_ERR_DIMENSION_MISMATCH);
+
+        for (size_t i = 0; i < 6; ++i) {
+            REQUIRE(mat.data[i] == 3.14);
+        }
     }
 
     mat_destroy(&mat);
