@@ -80,7 +80,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     unsigned int size = nrows * ncols;                                                              \
                                                                                                     \
     if (!matrix->data) {                                                                            \
-        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                 \
+        matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
         if (!matrix->data) {                                                                        \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
@@ -89,7 +89,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
         matrix->capacity = size;                                                                    \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
-    if (matrix->nrows == nrows && matrix->ncols == ncols) {                                         \
+    if ((int)matrix->nrows == nrows && (int)matrix->ncols == ncols) {                               \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if (!allow_resize) {                                                                            \
@@ -126,10 +126,10 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix, int row, int col, DATA_TYPE valu
     if (matrix == NULL) {                                                                       \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
-    if (row >= matrix->nrows || row < 0) {                                                      \
+    if (row >= (int)matrix->nrows || row < 0) {                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
     }                                                                                           \
-    if (col >= matrix->ncols || col < 0) {                                                      \
+    if (col >= (int)matrix->ncols || col < 0) {                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");         \
     }                                                                                           \
     matrix->data[row * matrix->ncols + col] = value;                                            \
@@ -208,7 +208,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     if ((step) <= 0) {                                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_RANGE_INVALID_STEP, "Step cannot be zero or negative.");         \
     }                                                                                               \
-    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                                                 \
+    n_elem = (int)ceil(((double)(high) - (double)(low)) / (double)(step));                          \
     if (n_elem==0) {                                                                                \
         return MATRIX_SUCCESS;     /* Return immediately if no elements can be created. */          \
     }                                                                                               \
@@ -228,7 +228,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* out, DATA_TYPE low, DATA_TYPE high,     
     default:                                                                                        \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Dimension must be either 0 or 1.");          \
     }                                                                                               \
-    for (int i = 0; i < n_elem; ++i) {                                                              \
+    for (int i = 0; i < (int)n_elem; ++i) {                                                         \
         out->data[i] = (low) + i * (step);                                                          \
     }                                                                                               \
     return MATRIX_SUCCESS;                                                                          \
@@ -461,7 +461,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
                          "'to' must have the same number of rows as number of indices in 'indices'.");  \
         }                                                                                               \
         for (size_t i=0; i<indices->nrows; ++i) {                                                       \
-            if (indices->data[i] >= from->nrows) {                                                      \
+            if (indices->data[i] >= (int)from->nrows) {                                                 \
                 RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Row index out of bounds.");            \
             }                                                                                           \
             COPY_FUNC(from->ncols, &from->data[indices->data[i] * from->ncols], 1,                      \
@@ -479,7 +479,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *from, MATRIX_TYPE *to, const INT_M
         }                                                                                               \
         for (size_t i=0; i<to->nrows; ++i) {                                                            \
             for (size_t j=0; j<to->ncols; ++j) {                                                        \
-                if (indices->data[j] >= from->ncols) {                                                  \
+                if (indices->data[j] >= (int)from->ncols) {                                             \
                     RETURN_ON_ERROR(MATRIX_ERR_INDEX_OUT_OF_BOUNDS, "Column index out of bounds.");     \
                 }                                                                                       \
                 to->data[i*to->ncols+j] = from->data[i*from->ncols+indices->data[j]];                   \
