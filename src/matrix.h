@@ -52,8 +52,7 @@ typedef enum {
     MATRIX_ERROR_ZERO_STD_DEV
 } MatrixStatusCode;
 
-static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsigned int ncols,
-                                    int row, int col, const char *func, int line) {
+static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsigned int ncols, int row, int col, const char *func, int line) {
     if (matrix == NULL) {
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
         abort();
@@ -69,10 +68,8 @@ static inline size_t _matrix_offset(const void *matrix, unsigned int nrows, unsi
 }
 
 // Matrix elementwise access
-#define MATRIX_AT(matrix, row, col)                                                               \
-    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset(                                   \
-        (matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, \
-        (row), (col), __func_, __LINE__)])
+#define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func_, __LINE__)])
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
@@ -86,14 +83,11 @@ MatrixStatusCode intmat_scale(IntMatrix *mat, const int fac);
 MatrixStatusCode intmat_add_scalar(IntMatrix *mat, const int scalar);
 MatrixStatusCode intmat_add(IntMatrix *mat_a, const IntMatrix *mat_b);
 MatrixStatusCode intmat_sub(IntMatrix *mat_a, const IntMatrix *mat_b);
-MatrixStatusCode intmat_mul(const IntMatrix *mat_a, bool transpose_a, const IntMatrix *mat_b,
-                            bool transpose_b, IntMatrix *result);
-MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec, unsigned int dimension,
-                               unsigned int repeats);
+MatrixStatusCode intmat_mul(const IntMatrix *mat_a, bool transpose_a, const IntMatrix *mat_b, bool transpose_b, IntMatrix *result);
+MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec, unsigned int dimension, unsigned int repeats);
 MatrixStatusCode intmat_vec_add(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix *mat, const IntMatrix *vec);
-MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices,
-                               unsigned int dimension);
+MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for double matrices
@@ -101,8 +95,7 @@ MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
 MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
 MatrixStatusCode mat_print(const Matrix *matrix);
-MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step,
-                           unsigned int dimension);
+MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step, unsigned int dimension);
 MatrixStatusCode mat_fill(Matrix *matrix, const double value);
 MatrixStatusCode mat_fill_random(Matrix *matrix);
 MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means, Matrix *stds);
@@ -112,14 +105,11 @@ MatrixStatusCode mat_norm(double *norm, Matrix *mat);
 MatrixStatusCode mat_add_scalar(Matrix *mat, const double scalar);
 MatrixStatusCode mat_add(Matrix *mat_a, const Matrix *mat_b);
 MatrixStatusCode mat_sub(Matrix *mat_a, const Matrix *mat_b);
-MatrixStatusCode mat_mul(const Matrix *mat_a, bool transpose_a, const Matrix *mat_b,
-                         bool transpose_b, Matrix *result);
-MatrixStatusCode mat_repeat(Matrix *repeated, const Matrix *vec, unsigned int dimension,
-                            unsigned int repeats);
+MatrixStatusCode mat_mul(const Matrix *mat_a, bool transpose_a, const Matrix *mat_b, bool transpose_b, Matrix *result);
+MatrixStatusCode mat_repeat(Matrix *repeated, const Matrix *vec, unsigned int dimension, unsigned int repeats);
 MatrixStatusCode mat_vec_add(Matrix *mat, const Matrix *vec);
 MatrixStatusCode mat_vec_sub(Matrix *mat, const Matrix *vec);
-MatrixStatusCode mat_gather(const Matrix *from, Matrix *to, const IntMatrix *indices,
-                            unsigned int dimension);
+MatrixStatusCode mat_gather(const Matrix *from, Matrix *to, const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode mat_destroy(Matrix *matrix);
 
 #endif // MATRIX_H

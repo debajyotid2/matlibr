@@ -51,10 +51,8 @@ double rand_double() {
 }
 
 // Function for displaying and handling errors
-static void error_handler(const char *function, int line, MatrixStatusCode status_code,
-                          const char *msg) {
-    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code,
-            msg);
+static void error_handler(const char *function, int line, MatrixStatusCode status_code, const char *msg) {
+    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code, msg);
 }
 
 // clang-format off
@@ -111,23 +109,13 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
 
 
 // Create a matrix
-#define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                 \
-MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                         \
-    if (matrix==NULL) {                                                                         \
-        RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received");                          \
-    }                                                                                           \
-    if (nrows <= 0 || ncols <= 0) {                                                             \
-        RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION,                                           \
-                        "Number of rows/columns cannot be <= 0.");                              \
-    }                                                                                           \
-    matrix->nrows = (unsigned int)(nrows);                                                      \
-    matrix->ncols = (unsigned int)(ncols);                                                      \
-    matrix->data = (DATA_TYPE *)calloc(matrix->nrows * matrix->ncols, sizeof(DATA_TYPE));       \
-    if (matrix->data==NULL) {                                                                   \
-        RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION,                                           \
-                        "Failed to allocate memory for specified matrix.");                     \
-    }                                                                                           \
-    return MATRIX_SUCCESS;                                                                      \
+#define DEFINE_MATRIX_CREATE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)                       \
+MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {                             \
+    MatrixStatusCode res = PREPARE_FUNC(matrix, nrows, ncols, true);                                \
+    if (res != MATRIX_SUCCESS) {                                                                    \
+        return res;                                                                                 \
+    }                                                                                               \
+    return MATRIX_SUCCESS;                                                                          \
 }
 
 // Assign a value at a particular index
@@ -694,7 +682,7 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
 /************************************************************************/
 
 DEFINE_MATRIX_PREPARE(intmat_prepare, IntMatrix, int)
-DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int)
+DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
 DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy)
 DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
@@ -771,7 +759,7 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
 /************************************************************************/
 
 DEFINE_MATRIX_PREPARE(mat_prepare, Matrix, double)
-DEFINE_MATRIX_CREATE(mat_create, Matrix, double)
+DEFINE_MATRIX_CREATE(mat_create, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
 DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy)
 DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
