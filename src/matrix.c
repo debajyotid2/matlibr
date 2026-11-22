@@ -811,32 +811,47 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
         means->ncols != 1 || stds->ncols != 1) {
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
     }
+    for (size_t i = 0; i < mat->nrows; i++) {
+        for (size_t j = 0; j < mat->ncols; j++) {
+            if (stds->data[j] == 0.0) {
+                RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
+            }
+        }
+    }
 
     const double two_pi = 2.0 * M_PI;
-    double u_1, u_2, mag;
+    double u_1, u_2, mag, z;
+
+    // Here to minimize calls to log, sqrt, sin, cos, etc. which are compute-intensive
+    // instructions, we calculate an extra value of Z (Z0 and Z1 can be chosen at random)
+    // and use it in the next iteration, if needed.
+    double extra = 0.0;
+    bool extra_present = false;
 
     for (size_t i = 0; i < mat->nrows; i++) {
         for (size_t j = 0; j < mat->ncols; j++) {
-            double mean = means->data[j];
-            double std = stds->data[j];
+            double mean = means->data[i];
+            double std = stds->data[i];
+            
+            if (extra_present) {
+                z = extra;
+                extra_present = false;
+            } else {
+                // Use Box-Muller transform to generate the random number
+                // from a standard normal distribution
+                do {
+                    u_1 = rand_double();
+                } while (u_1 == 0.0);
+                u_2 = rand_double();
 
-            if (std == 0.0) {
-                RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
+                mag = sqrt(-2.0 * log(u_1));
+                z = mag * cos(two_pi * u_2);
+                extra = mag * sin(two_pi * u_2);
+                extra_present = true;
             }
 
-            // Use Box-Muller transform to generate the random number
-            // from a standard normal distribution
-            do {
-                u_1 = rand_double();
-            } while (u_1 == 0.0);
-
-            u_2 = rand_double();
-
-            mag = std * sqrt(-2.0 * log(u_1));
-
             mat->data[i * mat->ncols + j] =
-                rand_int(2) ? mag * cos(two_pi * u_2) + mean
-                           : mag * sin(two_pi * u_2) + mean;
+                  z * std + mean;
         }
     }
     return MATRIX_SUCCESS;
