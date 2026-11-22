@@ -315,7 +315,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
 // Addition is performed as A := A+B
 #define DEFINE_MATRIX_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
-    if (mat_a==NULL || mat_b==NULL) {                                                                   \
+    if (mat_a==NULL || mat_b==NULL || !mat_a->data || !mat_b->data) {                                   \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
@@ -331,7 +331,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // Subtraction is performed as A := A - B
 #define DEFINE_MATRIX_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {                              \
-    if (mat_a==NULL || mat_b==NULL) {                                                                   \
+    if (mat_a==NULL || mat_b==NULL || !mat_a->data || !mat_b->data) {                                   \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                                 \
     }                                                                                                   \
     /* Ensure that both matrices are of same shape */                                                   \
@@ -349,7 +349,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // of dimensions as required to match A's dimensions.
 #define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
-    if (mat==NULL || vec==NULL) {                                                                       \
+    if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
@@ -383,7 +383,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // of dimensions as required to match A's dimensions.
 #define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
-    if (mat==NULL || vec==NULL) {                                                                       \
+    if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
@@ -804,7 +804,7 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 MatrixStatusCode mat_fill_random(Matrix *mat) {
-    if (mat == NULL) {
+    if (mat == NULL || !mat->data) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");
     }
 
@@ -876,7 +876,7 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
 
 // Sum of absolute values of matrix elements
 MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
-    if (mat == NULL || sum==NULL) {
+    if (mat == NULL || !mat->data || sum==NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
 
@@ -887,7 +887,7 @@ MatrixStatusCode mat_abs_sum(double* sum, Matrix *mat) {
 // Euclidean norm of a matrix across all rows and
 // columns.
 MatrixStatusCode mat_norm(double* norm, Matrix *mat) {
-    if (mat == NULL || norm==NULL) {
+    if (mat == NULL || !mat->data || norm==NULL) {
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received in argument.");
     }
     *norm = cblas_dnrm2(mat->nrows * mat->ncols, mat->data, 1);
