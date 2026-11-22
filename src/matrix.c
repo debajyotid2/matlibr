@@ -141,6 +141,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {         
     if (mat==NULL || !mat->data) {                                                              \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
+    if (copy == mat) {                                                                          \
+        return MATRIX_SUCCESS;                                                                  \
+    }                                                                                           \
     MatrixStatusCode res = PREPARE_FUNC(copy, mat->nrows, mat->ncols, true);                    \
     if (res != MATRIX_SUCCESS) {                                                                \
         return res;                                                                             \
