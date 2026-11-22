@@ -86,6 +86,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
         }                                                                                           \
         matrix->nrows = nrows;                                                                      \
         matrix->ncols = ncols;                                                                      \
+        matrix->capacity = size;                                                                    \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if (matrix->nrows == nrows && matrix->ncols == ncols) {                                         \
