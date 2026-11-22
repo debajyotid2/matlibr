@@ -634,14 +634,12 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 
     // Do C += alpha * op(A) * op(B)
     for (size_t i = 0; i < m; ++i) {
-        for (size_t j = 0; j < n; ++j) {
-            int dot_prod = 0;
-            for (size_t l = 0; l < k; ++l) {
-                int a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];
+        for (size_t l = 0; l < k; ++l) {
+            int a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];
+            for (size_t j = 0; j < n; ++j) {
                 int b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];
-                dot_prod += a_val * b_val;
+                c[i * ldc + j] += alpha * a_val * b_val;;
             }
-            c[i * ldc + j] += alpha * dot_prod;
         }
     }
 }
