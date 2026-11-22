@@ -48,21 +48,35 @@ typedef enum {
     MATRIX_ERROR_ZERO_STD_DEV
 } MatrixStatusCode;
 
+static inline size_t _matrix_offset(const void* matrix, 
+                                    unsigned int nrows,
+                                    unsigned int ncols,
+                                    int row, 
+                                    int col, 
+                                    const char* func, 
+                                    int line) {
+    if (matrix == NULL) {                                                                                    
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");      
+        abort();                                                                                             
+    }                                                                                                        
+    if ((int)row >= (int)nrows || (int)row < 0) {                                              
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Row index out of bounds.");    
+        abort();                                                                                             
+    } else if ((int)col < 0 || (int)col >= (int)ncols) {                                       
+        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Column index out of bounds."); 
+        abort();                                                                                             
+    }
+    return ncols * (size_t)row + (size_t)col;
+}
+
 // Matrix elementwise access
-#define MATRIX_AT(matrix, row, col) ({                                                                       \
-    if ((matrix) == NULL) {                                                                                  \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Null pointer received.");      \
-        abort();                                                                                             \
-    }                                                                                                        \
-    if ((int)(row) >= (int)(matrix)->nrows || (int)(row) < 0) {                                              \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Row index out of bounds.");    \
-        abort();                                                                                             \
-    } else if ((int)(col) < 0 || (int)(col) >= (int)(matrix)->ncols) {                                       \
-        fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", __func__, __LINE__, "Column index out of bounds."); \
-        abort();                                                                                             \
-    }                                                                                                        \
-    (matrix)->data[(matrix)->ncols * (row) + (col)];                                                         \
-})
+#define MATRIX_AT(matrix, row, col)                                                                         \
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix),                                    \
+                                        (matrix) != NULL ? (matrix)->nrows: 0,                              \
+                                        (matrix) != NULL ? (matrix)->ncols: 0,                              \
+                                        (row), (col), __func_, __LINE__)])
+
+
 
 // Functions for integer matrices
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
