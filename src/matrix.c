@@ -114,7 +114,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *copy, const MATRIX_TYPE *mat) {         
     }                                                                                           \
     if ((copy->nrows != mat->nrows) || (copy->ncols != mat->ncols)) {                           \
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                          \
-                        "Destination matrix must be of same dimensions as source.")             \
+                        "Destination matrix must be of same dimensions as source.");            \
     }                                                                                           \
     COPY_FUNC(mat->nrows * mat->ncols, mat->data, 1, copy->data, 1);                            \
     return MATRIX_SUCCESS;                                                                      \
@@ -546,12 +546,12 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 
     // Validation
     if (a == NULL || b == NULL || c == NULL) {
-        perror("ERROR! One of the matrices is a null pointer.");
+        fprintf(stderr, "ERROR! One of the matrices is a null pointer.");
         return;
     }
     if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||
         (transb == CblasConjTrans || transb == CblasConjNoTrans)) {
-        perror("ERROR! Conjugate transpose is not supported for integer GEMM.");
+        fprintf(stderr, "ERROR! Conjugate transpose is not supported for integer GEMM.");
         return;
     }
     if (a_is_transposed) {
@@ -560,7 +560,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
         min_lda = k > 1 ? k : 1;
     }
     if (lda < min_lda) {
-        perror("ERROR! Invalid LDA (leading dimension of A).");
+        fprintf(stderr, "ERROR! Invalid LDA (leading dimension of A).");
         return;
     }
     if (b_is_transposed) {
@@ -569,12 +569,12 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
         min_ldb = n > 1 ? n : 1;
     }
     if (ldb < min_ldb) {
-        perror("ERROR! Invalid LDB (leading dimension of B).");
+        fprintf(stderr, "ERROR! Invalid LDB (leading dimension of B).");
         return;
     }
     min_ldc = n > 1 ? n : 1;
     if (ldc < min_ldc) {
-        perror("ERROR! Invalid LDC (leading dimension of C).");
+        fprintf(stderr, "ERROR! Invalid LDC (leading dimension of C).");
         return;
     }
 
@@ -614,7 +614,7 @@ static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
 static void iusga(const unsigned int num_elem, const int *y, const unsigned int incy,
            int *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
-        perror("ERROR! Null pointer in array argument(s).");
+        fprintf(stderr, "ERROR! Null pointer in array argument(s).");
         return;
     }
     for (size_t i = 0; i < num_elem; i++) {
@@ -628,7 +628,7 @@ static void iusga(const unsigned int num_elem, const int *y, const unsigned int 
 static void dusga(const unsigned int num_elem, const double *y,
            const unsigned int incy, double *x, const unsigned int *idxs) {
     if (x == NULL || y == NULL || idxs == NULL) {
-        perror("ERROR! Null pointer in array argument(s).");
+        fprintf(stderr, "ERROR! Null pointer in array argument(s).");
         return;
     }
     for (size_t i = 0; i < num_elem; i++) {
