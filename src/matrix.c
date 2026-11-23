@@ -15,22 +15,22 @@
 */
 
 #include <cblas.h>
+#include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <inttypes.h>
 
 #include "matrix.h"
 #include "matrix_types.h"
 
 // restrict keyword for enabling compiler SIMD vectorization
 #ifdef __cplusplus
-#define MATRIX_RESTRICT __restrict
+#    define MATRIX_RESTRICT __restrict
 #else
-#define MATRIX_RESTRICT restrict
+#    define MATRIX_RESTRICT restrict
 #endif
 
 #ifdef _WIN32

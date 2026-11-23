@@ -143,13 +143,15 @@ TEST_CASE("MatrixI32: Creation and Destruction", "[matrixi32]") {
         REQUIRE(mati32_create(&mat, -1, 5) == MATRIX_ERR_INVALID_DIMENSION);
     }
 
-    SECTION("Creation with null pointer") { REQUIRE(mati32_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR); }
+    SECTION("Creation with null pointer") {
+        REQUIRE(mati32_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR);
+    }
 
-    SECTION("Creation without MATRIX_INIT, destruction and reuse") { 
+    SECTION("Creation without MATRIX_INIT, destruction and reuse") {
         MatrixI32 mat_b;
-        REQUIRE(mati32_create(&mat_b, 3, 3) == MATRIX_SUCCESS); 
+        REQUIRE(mati32_create(&mat_b, 3, 3) == MATRIX_SUCCESS);
         REQUIRE(mati32_destroy(&mat_b) == MATRIX_SUCCESS);
-        REQUIRE(mati32_create(&mat_b, 2, 4) == MATRIX_SUCCESS); 
+        REQUIRE(mati32_create(&mat_b, 2, 4) == MATRIX_SUCCESS);
         REQUIRE(mati32_destroy(&mat_b) == MATRIX_SUCCESS);
     }
 
@@ -385,7 +387,9 @@ TEST_CASE("MatrixI64: Creation and Destruction", "[matrixi64]") {
         REQUIRE(mati64_create(&mat, -1, 5) == MATRIX_ERR_INVALID_DIMENSION);
     }
 
-    SECTION("Creation with null pointer") { REQUIRE(mati64_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR); }
+    SECTION("Creation with null pointer") {
+        REQUIRE(mati64_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR);
+    }
 
     SECTION("Destruction") {
         mati64_create(&mat, 2, 2);
@@ -989,7 +993,9 @@ TEST_CASE("IntMatrix: Creation and Destruction", "[intmatrix]") {
         REQUIRE(intmat_create(&mat, -1, 5) == MATRIX_ERR_INVALID_DIMENSION);
     }
 
-    SECTION("Creation with null pointer") { REQUIRE(intmat_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR); }
+    SECTION("Creation with null pointer") {
+        REQUIRE(intmat_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR);
+    }
 
     SECTION("Destruction") {
         intmat_create(&mat, 2, 2);
@@ -1144,7 +1150,6 @@ TEST_CASE("IntMatrix: Set Data Error Cases", "[intmatrix]") {
 
     intmat_destroy(&mat);
 }
-
 
 TEST_CASE("IntMatrix: Arithmetic Operations", "[intmatrix]") {
     IntMatrix mat_a = MATRIX_INIT;

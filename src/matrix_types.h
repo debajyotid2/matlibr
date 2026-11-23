@@ -1,20 +1,20 @@
 #ifndef MATRIX_TYPES_H
 #define MATRIX_TYPES_H
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 
 // Matrices should be initialized to MATRIX_INIT.
 // E.g. `Matrix a = MATRIX_INIT;`
 #define MATRIX_INIT {0}
 
-#define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE)               \
-    typedef struct {                                            \
-        uint64_t magic;                                         \
-        size_t  nrows, ncols;                                   \
-        C_TYPE *data;                                           \
-        size_t  capacity;                                       \
+#define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE) \
+    typedef struct {                              \
+        uint64_t magic;                           \
+        size_t   nrows, ncols;                    \
+        C_TYPE  *data;                            \
+        size_t   capacity;                        \
     } STRUCT_NAME;
 
 DEFINE_MATRIX_STRUCT(MatrixI32, int32_t)

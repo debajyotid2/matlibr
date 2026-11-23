@@ -1,22 +1,22 @@
 /* Benchmarks for module matrix.h
 
-  Copyright (c) 2024 Debajyoti Debnath                                         
-                                                                           
-  Licensed under the Apache License, Version 2.0 (the "License");          
-  you may not use this file except in compliance with the License.         
-  You may obtain a copy of the License at                                  
-                                                                           
-      http://www.apache.org/licenses/LICENSE-2.0                           
-                                                                           
-  Unless required by applicable law or agreed to in writing, software      
-  distributed under the License is distributed on an "AS IS" BASIS,        
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-  See the License for the specific language governing permissions and      
-  limitations under the License.                                           
+  Copyright (c) 2024 Debajyoti Debnath
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 */
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "matrix.h"
 
@@ -33,13 +33,9 @@ TEST_CASE("IntMatrix Performance", "[intmatrix][benchmark]") {
     intmat_fill(&sm_a, 1);
     intmat_fill(&sm_b, 2);
 
-    BENCHMARK("IntMatrix Add [32x32]") {
-        return intmat_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("IntMatrix Add [32x32]") { return intmat_add(&sm_a, &sm_b); };
 
-    BENCHMARK("IntMatrix Mul [32x32]") {
-        return intmat_mul(&sm_a, false, &sm_b, false, &sm_r);
-    };
+    BENCHMARK("IntMatrix Mul [32x32]") { return intmat_mul(&sm_a, false, &sm_b, false, &sm_r); };
 
     intmat_destroy(&sm_a);
     intmat_destroy(&sm_b);
@@ -56,13 +52,9 @@ TEST_CASE("IntMatrix Performance", "[intmatrix][benchmark]") {
     intmat_fill(&mm_a, 1);
     intmat_fill(&mm_b, 2);
 
-    BENCHMARK("IntMatrix Add [256x256]") {
-        return intmat_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("IntMatrix Add [256x256]") { return intmat_add(&mm_a, &mm_b); };
 
-    BENCHMARK("IntMatrix Mul [256x256]") {
-        return intmat_mul(&mm_a, false, &mm_b, false, &mm_r);
-    };
+    BENCHMARK("IntMatrix Mul [256x256]") { return intmat_mul(&mm_a, false, &mm_b, false, &mm_r); };
 
     intmat_destroy(&mm_a);
     intmat_destroy(&mm_b);
@@ -79,9 +71,7 @@ TEST_CASE("IntMatrix Performance", "[intmatrix][benchmark]") {
     intmat_fill(&ll_a, 1);
     intmat_fill(&ll_b, 2);
 
-    BENCHMARK("IntMatrix Add [1024x1024]") {
-        return intmat_add(&ll_a, &ll_b);
-    };
+    BENCHMARK("IntMatrix Add [1024x1024]") { return intmat_add(&ll_a, &ll_b); };
 
     BENCHMARK("IntMatrix Mul [1024x1024]") {
         return intmat_mul(&ll_a, false, &ll_b, false, &ll_r);
@@ -92,27 +82,22 @@ TEST_CASE("IntMatrix Performance", "[intmatrix][benchmark]") {
     intmat_destroy(&ll_r);
 }
 
-
 // Benchmarks for Matrix (Double Precision Operations with BLAS)
 TEST_CASE("Matrix Performance", "[matrix][benchmark]") {
     // Small Matrix Benchmarks (32x32)
     const int small_dim = 32;
-    Matrix sm_a = MATRIX_INIT;
-    Matrix sm_b = MATRIX_INIT;
-    Matrix sm_r = MATRIX_INIT;
+    Matrix    sm_a = MATRIX_INIT;
+    Matrix    sm_b = MATRIX_INIT;
+    Matrix    sm_r = MATRIX_INIT;
     mat_create(&sm_a, small_dim, small_dim);
     mat_create(&sm_b, small_dim, small_dim);
     mat_create(&sm_r, small_dim, small_dim);
     mat_fill(&sm_a, 1.0);
     mat_fill(&sm_b, 2.0);
 
-    BENCHMARK("Matrix (BLAS) Add [32x32]") {
-        return mat_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("Matrix (BLAS) Add [32x32]") { return mat_add(&sm_a, &sm_b); };
 
-    BENCHMARK("Matrix (BLAS) Mul [32x32]") {
-        return mat_mul(&sm_a, false, &sm_b, false, &sm_r);
-    };
+    BENCHMARK("Matrix (BLAS) Mul [32x32]") { return mat_mul(&sm_a, false, &sm_b, false, &sm_r); };
 
     mat_destroy(&sm_a);
     mat_destroy(&sm_b);
@@ -120,22 +105,18 @@ TEST_CASE("Matrix Performance", "[matrix][benchmark]") {
 
     // Medium Matrix Benchmarks (256x256)
     const int med_dim = 256;
-    Matrix mm_a = MATRIX_INIT;
-    Matrix mm_b = MATRIX_INIT;
-    Matrix mm_r = MATRIX_INIT;
+    Matrix    mm_a = MATRIX_INIT;
+    Matrix    mm_b = MATRIX_INIT;
+    Matrix    mm_r = MATRIX_INIT;
     mat_create(&mm_a, med_dim, med_dim);
     mat_create(&mm_b, med_dim, med_dim);
     mat_create(&mm_r, med_dim, med_dim);
     mat_fill(&mm_a, 1.0);
     mat_fill(&mm_b, 2.0);
 
-    BENCHMARK("Matrix (BLAS) Add [256x256]") {
-        return mat_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("Matrix (BLAS) Add [256x256]") { return mat_add(&mm_a, &mm_b); };
 
-    BENCHMARK("Matrix (BLAS) Mul [256x256]") {
-        return mat_mul(&mm_a, false, &mm_b, false, &mm_r);
-    };
+    BENCHMARK("Matrix (BLAS) Mul [256x256]") { return mat_mul(&mm_a, false, &mm_b, false, &mm_r); };
 
     mat_destroy(&mm_a);
     mat_destroy(&mm_b);
@@ -143,18 +124,16 @@ TEST_CASE("Matrix Performance", "[matrix][benchmark]") {
 
     // Large Matrix Benchmarks (1024x1024)
     const int large_dim = 1024;
-    Matrix lm_a = MATRIX_INIT;
-    Matrix lm_b = MATRIX_INIT;
-    Matrix lm_r = MATRIX_INIT;
+    Matrix    lm_a = MATRIX_INIT;
+    Matrix    lm_b = MATRIX_INIT;
+    Matrix    lm_r = MATRIX_INIT;
     mat_create(&lm_a, large_dim, large_dim);
     mat_create(&lm_b, large_dim, large_dim);
     mat_create(&lm_r, large_dim, large_dim);
     mat_fill(&lm_a, 1.0);
     mat_fill(&lm_b, 2.0);
 
-    BENCHMARK("Matrix (BLAS) Add [1024x1024]") {
-        return mat_add(&lm_a, &lm_b);
-    };
+    BENCHMARK("Matrix (BLAS) Add [1024x1024]") { return mat_add(&lm_a, &lm_b); };
 
     BENCHMARK("Matrix (BLAS) Mul [1024x1024]") {
         return mat_mul(&lm_a, false, &lm_b, false, &lm_r);
@@ -192,7 +171,6 @@ TEST_CASE("Matrix Creation and Copy Performance", "[matrix][intmatrix][benchmark
     };
     intmat_destroy(&int_src);
 
-
     Matrix double_src = MATRIX_INIT;
     Matrix double_dst = MATRIX_INIT;
     mat_create(&double_src, dim, dim);
@@ -217,13 +195,9 @@ TEST_CASE("MatrixI32 Performance", "[matrixi32][benchmark]") {
     mati32_fill(&sm_a, 1);
     mati32_fill(&sm_b, 2);
 
-    BENCHMARK("MatrixI32 Add [32x32]") {
-        return mati32_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("MatrixI32 Add [32x32]") { return mati32_add(&sm_a, &sm_b); };
 
-    BENCHMARK("MatrixI32 Mul [32x32]") {
-        return mati32_mul(&sm_a, false, &sm_b, false, &sm_r);
-    };
+    BENCHMARK("MatrixI32 Mul [32x32]") { return mati32_mul(&sm_a, false, &sm_b, false, &sm_r); };
 
     mati32_destroy(&sm_a);
     mati32_destroy(&sm_b);
@@ -240,13 +214,9 @@ TEST_CASE("MatrixI32 Performance", "[matrixi32][benchmark]") {
     mati32_fill(&mm_a, 1);
     mati32_fill(&mm_b, 2);
 
-    BENCHMARK("MatrixI32 Add [256x256]") {
-        return mati32_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("MatrixI32 Add [256x256]") { return mati32_add(&mm_a, &mm_b); };
 
-    BENCHMARK("MatrixI32 Mul [256x256]") {
-        return mati32_mul(&mm_a, false, &mm_b, false, &mm_r);
-    };
+    BENCHMARK("MatrixI32 Mul [256x256]") { return mati32_mul(&mm_a, false, &mm_b, false, &mm_r); };
 
     mati32_destroy(&mm_a);
     mati32_destroy(&mm_b);
@@ -263,9 +233,7 @@ TEST_CASE("MatrixI32 Performance", "[matrixi32][benchmark]") {
     mati32_fill(&lm_a, 1);
     mati32_fill(&lm_b, 2);
 
-    BENCHMARK("MatrixI32 Add [1024x1024]") {
-        return mati32_add(&lm_a, &lm_b);
-    };
+    BENCHMARK("MatrixI32 Add [1024x1024]") { return mati32_add(&lm_a, &lm_b); };
 
     BENCHMARK("MatrixI32 Mul [1024x1024]") {
         return mati32_mul(&lm_a, false, &lm_b, false, &lm_r);
@@ -289,13 +257,9 @@ TEST_CASE("MatrixI64 Performance", "[matrixi64][benchmark]") {
     mati64_fill(&sm_a, 1);
     mati64_fill(&sm_b, 2);
 
-    BENCHMARK("MatrixI64 Add [32x32]") {
-        return mati64_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("MatrixI64 Add [32x32]") { return mati64_add(&sm_a, &sm_b); };
 
-    BENCHMARK("MatrixI64 Mul [32x32]") {
-        return mati64_mul(&sm_a, false, &sm_b, false, &sm_r);
-    };
+    BENCHMARK("MatrixI64 Mul [32x32]") { return mati64_mul(&sm_a, false, &sm_b, false, &sm_r); };
 
     mati64_destroy(&sm_a);
     mati64_destroy(&sm_b);
@@ -312,13 +276,9 @@ TEST_CASE("MatrixI64 Performance", "[matrixi64][benchmark]") {
     mati64_fill(&mm_a, 1);
     mati64_fill(&mm_b, 2);
 
-    BENCHMARK("MatrixI64 Add [256x256]") {
-        return mati64_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("MatrixI64 Add [256x256]") { return mati64_add(&mm_a, &mm_b); };
 
-    BENCHMARK("MatrixI64 Mul [256x256]") {
-        return mati64_mul(&mm_a, false, &mm_b, false, &mm_r);
-    };
+    BENCHMARK("MatrixI64 Mul [256x256]") { return mati64_mul(&mm_a, false, &mm_b, false, &mm_r); };
 
     mati64_destroy(&mm_a);
     mati64_destroy(&mm_b);
@@ -335,9 +295,7 @@ TEST_CASE("MatrixI64 Performance", "[matrixi64][benchmark]") {
     mati64_fill(&lm_a, 1);
     mati64_fill(&lm_b, 2);
 
-    BENCHMARK("MatrixI64 Add [1024x1024]") {
-        return mati64_add(&lm_a, &lm_b);
-    };
+    BENCHMARK("MatrixI64 Add [1024x1024]") { return mati64_add(&lm_a, &lm_b); };
 
     BENCHMARK("MatrixI64 Mul [1024x1024]") {
         return mati64_mul(&lm_a, false, &lm_b, false, &lm_r);
@@ -361,9 +319,7 @@ TEST_CASE("MatrixF32 Performance", "[matrixf32][benchmark]") {
     matf32_fill(&sm_a, 1.0f);
     matf32_fill(&sm_b, 2.0f);
 
-    BENCHMARK("MatrixF32 (BLAS) Add [32x32]") {
-        return matf32_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("MatrixF32 (BLAS) Add [32x32]") { return matf32_add(&sm_a, &sm_b); };
 
     BENCHMARK("MatrixF32 (BLAS) Mul [32x32]") {
         return matf32_mul(&sm_a, false, &sm_b, false, &sm_r);
@@ -384,9 +340,7 @@ TEST_CASE("MatrixF32 Performance", "[matrixf32][benchmark]") {
     matf32_fill(&mm_a, 1.0f);
     matf32_fill(&mm_b, 2.0f);
 
-    BENCHMARK("MatrixF32 (BLAS) Add [256x256]") {
-        return matf32_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("MatrixF32 (BLAS) Add [256x256]") { return matf32_add(&mm_a, &mm_b); };
 
     BENCHMARK("MatrixF32 (BLAS) Mul [256x256]") {
         return matf32_mul(&mm_a, false, &mm_b, false, &mm_r);
@@ -407,9 +361,7 @@ TEST_CASE("MatrixF32 Performance", "[matrixf32][benchmark]") {
     matf32_fill(&lm_a, 1.0f);
     matf32_fill(&lm_b, 2.0f);
 
-    BENCHMARK("MatrixF32 (BLAS) Add [1024x1024]") {
-        return matf32_add(&lm_a, &lm_b);
-    };
+    BENCHMARK("MatrixF32 (BLAS) Add [1024x1024]") { return matf32_add(&lm_a, &lm_b); };
 
     BENCHMARK("MatrixF32 (BLAS) Mul [1024x1024]") {
         return matf32_mul(&lm_a, false, &lm_b, false, &lm_r);
@@ -433,9 +385,7 @@ TEST_CASE("MatrixF64 Performance", "[matrixf64][benchmark]") {
     matf64_fill(&sm_a, 1.0);
     matf64_fill(&sm_b, 2.0);
 
-    BENCHMARK("MatrixF64 (BLAS) Add [32x32]") {
-        return matf64_add(&sm_a, &sm_b);
-    };
+    BENCHMARK("MatrixF64 (BLAS) Add [32x32]") { return matf64_add(&sm_a, &sm_b); };
 
     BENCHMARK("MatrixF64 (BLAS) Mul [32x32]") {
         return matf64_mul(&sm_a, false, &sm_b, false, &sm_r);
@@ -456,9 +406,7 @@ TEST_CASE("MatrixF64 Performance", "[matrixf64][benchmark]") {
     matf64_fill(&mm_a, 1.0);
     matf64_fill(&mm_b, 2.0);
 
-    BENCHMARK("MatrixF64 (BLAS) Add [256x256]") {
-        return matf64_add(&mm_a, &mm_b);
-    };
+    BENCHMARK("MatrixF64 (BLAS) Add [256x256]") { return matf64_add(&mm_a, &mm_b); };
 
     BENCHMARK("MatrixF64 (BLAS) Mul [256x256]") {
         return matf64_mul(&mm_a, false, &mm_b, false, &mm_r);
@@ -479,9 +427,7 @@ TEST_CASE("MatrixF64 Performance", "[matrixf64][benchmark]") {
     matf64_fill(&lm_a, 1.0);
     matf64_fill(&lm_b, 2.0);
 
-    BENCHMARK("MatrixF64 (BLAS) Add [1024x1024]") {
-        return matf64_add(&lm_a, &lm_b);
-    };
+    BENCHMARK("MatrixF64 (BLAS) Add [1024x1024]") { return matf64_add(&lm_a, &lm_b); };
 
     BENCHMARK("MatrixF64 (BLAS) Mul [1024x1024]") {
         return matf64_mul(&lm_a, false, &lm_b, false, &lm_r);
