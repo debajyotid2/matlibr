@@ -21,8 +21,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "matrix.h"
+#include "matrix_types.h"
+
+// restrict keyword for enabling compiler SIMD vectorization
+#ifdef __cplusplus
+#define MATRIX_RESTRICT __restrict
+#else
+#define MATRIX_RESTRICT restrict
+#endif
 
 #ifdef _WIN32
 #    include <limits.h>
@@ -51,8 +60,10 @@ double rand_double() {
 }
 
 // Function for displaying and handling errors
-static void error_handler(const char *function, int line, MatrixStatusCode status_code, const char *msg) {
-    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code, msg);
+static void error_handler(const char *function, int line, MatrixStatusCode status_code,
+                          const char *msg) {
+    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code,
+            msg);
 }
 
 // clang-format off
@@ -67,6 +78,9 @@ error_handler(__func__, __LINE__, status_code, msg)
         return (status_code);                           \
     } while (0)
 
+
+#define MATRIX_MAGIC 0xFEAB1365FEDC2937ULL
+
 // Internal use function: check if a matrix is already initialized with memory.
 // If not, allocate memory and initialize it.
 #define DEFINE_MATRIX_PREPARE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                    \
@@ -77,16 +91,20 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     if (nrows <= 0 || ncols <= 0) {                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Invalid 'nrows' or 'ncols'.");               \
     }                                                                                               \
-    size_t size = nrows * ncols;                                                                    \
+    size_t size = (size_t)nrows * (size_t)ncols;                                                    \
                                                                                                     \
-    if (!matrix->data) {                                                                            \
+    if (matrix->magic != MATRIX_MAGIC) {                                                            \
         matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
         if (!matrix->data) {                                                                        \
+            matrix->nrows = 0;                                                                      \
+            matrix->ncols = 0;                                                                      \
+            matrix->capacity = 0;                                                                   \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
         matrix->nrows = nrows;                                                                      \
         matrix->ncols = ncols;                                                                      \
         matrix->capacity = size;                                                                    \
+        matrix->magic = MATRIX_MAGIC;                                                               \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if ((int)matrix->nrows == nrows && (int)matrix->ncols == ncols) {                               \
@@ -115,7 +133,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {         
     if (res != MATRIX_SUCCESS) {                                                                    \
         return res;                                                                                 \
     }                                                                                               \
-    memset(matrix->data, 0, nrows * ncols * sizeof(DATA_TYPE));                                     \
+    memset(matrix->data, 0, (size_t)nrows * (size_t)ncols * sizeof(DATA_TYPE));                     \
     return MATRIX_SUCCESS;                                                                          \
 }
 
@@ -369,9 +387,13 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
-        const DATA_TYPE one = 1;                                                                        \
+        DATA_TYPE* MATRIX_RESTRICT mat_data = mat->data;                                                \
+        const DATA_TYPE* MATRIX_RESTRICT vec_data = vec->data;                                          \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
-            AXPY_FUNC(mat->ncols, vec->data[i], &one, 0, &mat->data[i * mat->ncols], 1);                \
+            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
+                DATA_TYPE* MATRIX_RESTRICT row = &mat_data[i*mat->ncols];                               \
+                row[j] += vec_data[i];                                                                  \
+            }                                                                                           \
         }                                                                                               \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
@@ -381,7 +403,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // Subtraction is done as: A := A - B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
@@ -403,9 +425,12 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
+        DATA_TYPE* MATRIX_RESTRICT mat_data = mat->data;                                                \
+        const DATA_TYPE* MATRIX_RESTRICT vec_data = vec->data;                                          \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
             for (size_t j=0; j < mat->ncols; ++j) {                                                     \
-                mat->data[i*mat->ncols + j] -= vec->data[i];                                            \
+                DATA_TYPE* MATRIX_RESTRICT row = &mat_data[i*mat->ncols];                               \
+                row[j] -= vec_data[i];                                                                  \
             }                                                                                           \
         }                                                                                               \
     }                                                                                                   \
@@ -512,6 +537,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
     if (matrix == NULL) {                                                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
+    if (matrix->magic != MATRIX_MAGIC) {                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_UNINITIALIZED, "Matrix not initialized or already destroyed");   \
+    }                                                                                               \
     if ((matrix->data) != NULL) {                                                                   \
         free(matrix->data);                                                                         \
     }                                                                                               \
@@ -519,6 +547,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
     matrix->nrows = 0;                                                                              \
     matrix->ncols = 0;                                                                              \
     matrix->capacity = 0;                                                                           \
+    matrix->magic = 0;                                                                              \
     return MATRIX_SUCCESS;                                                                          \
 }
 
@@ -533,52 +562,58 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
 /************************************************************/
 
 // Scales a vector x := alpha * x. (?scal)
-static void iscal(const size_t num_elem, const int alpha, int *x,
-           const unsigned int incx) {
-    if (x == NULL || incx == 0) {
-        return;
-    }
-    for (size_t i = 0; i < num_elem; i++) {
-        x[i * incx] *= alpha;
-    }
+#define DEFINE_SCAL(FUNC_NAME, DATA_TYPE)                                             \
+static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha, DATA_TYPE *x,     \
+                        const unsigned int incx) {                                    \
+    if (x == NULL || incx == 0) {                                                     \
+        return;                                                                       \
+    }                                                                                 \
+    for (size_t i = 0; i < num_elem; i++) {                                           \
+        x[i * incx] *= alpha;                                                         \
+    }                                                                                 \
 }
 
 // Copies a vector y := x. (?copy)
-static void icopy(const size_t num_elem, const int *x, const unsigned int incx,
-           int *y, const unsigned int incy) {
-    if (x == NULL || y == NULL) {
-        return;
-    }
-
-    if (incx == 0 || incy == 0) {
-        return;
-    }
-
-    if (incx == 1 && incy == 1) {
-        memcpy(y, x, num_elem * sizeof(int));
-        return;
-    }
-
-    for (size_t i = 0; i < num_elem; i++) {
-        y[i * incy] = x[i * incx];
-    }
+#define DEFINE_COPY(FUNC_NAME, DATA_TYPE)                                                    \
+static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *MATRIX_RESTRICT x,             \
+           const unsigned int incx,                                                          \
+           DATA_TYPE *MATRIX_RESTRICT y, const unsigned int incy) {                          \
+    if (x == NULL || y == NULL) {                                                            \
+        return;                                                                              \
+    }                                                                                        \
+                                                                                             \
+    if (incx == 0 || incy == 0) {                                                            \
+        return;                                                                              \
+    }                                                                                        \
+                                                                                             \
+    if (incx == 1 && incy == 1) {                                                            \
+        memcpy(y, x, num_elem * sizeof(DATA_TYPE));                                          \
+        return;                                                                              \
+    }                                                                                        \
+                                                                                             \
+    for (size_t i = 0; i < num_elem; i++) {                                                  \
+        y[i * incy] = x[i * incx];                                                           \
+    }                                                                                        \
 }
 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
-static void iaxpy(const size_t num_elem, const int alpha, const int *x,
-           const unsigned int incx, int *y, const unsigned int incy) {
-    if (x == NULL || y == NULL) {
-        return;
-    }
-
-    if (incx == 0 || incy == 0) {
-        return;
-    }
-
-    for (size_t i = 0; i < num_elem; i++) {
-        y[i * incy] += alpha * x[i * incx];
-    }
+#define DEFINE_AXPY(FUNC_NAME, DATA_TYPE)                                                   \
+static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha,                         \
+           const DATA_TYPE *MATRIX_RESTRICT x,                                              \
+           const unsigned int incx,                                                         \
+           DATA_TYPE *MATRIX_RESTRICT y, const unsigned int incy) {                         \
+    if (x == NULL || y == NULL) {                                                           \
+        return;                                                                             \
+    }                                                                                       \
+                                                                                            \
+    if (incx == 0 || incy == 0) {                                                           \
+        return;                                                                             \
+    }                                                                                       \
+                                                                                            \
+    for (size_t i = 0; i < num_elem; i++) {                                                 \
+        y[i * incy] += alpha * x[i * incx];                                                 \
+    }                                                                                       \
 }
 
 // General dense matrix multiplication for integer matrices. (?gemm)
@@ -588,75 +623,73 @@ static void iaxpy(const size_t num_elem, const int alpha, const int *x,
 // (e.g. "https://www.intel.com/content/www/us/en
 // /docs/onemkl/developer-reference-c/2023-1/cblas-gemm
 // -001.html#GUID-97718E5C-6E0A-44F0-B2B1-A551F0F164B2")
-static void igemm(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
-           const unsigned int m, const unsigned int n, const unsigned int k,
-           const int alpha, const int *a, const unsigned int lda, const int *b,
-           const unsigned int ldb, const int beta, int *c,
-           const unsigned int ldc) {
-    unsigned int min_lda, min_ldb, min_ldc;
-    bool a_is_transposed = (transa == CblasTrans);
-    bool b_is_transposed = (transb == CblasTrans);
-
-    // Validation
-    if (a == NULL || b == NULL || c == NULL) {
-        fprintf(stderr, "ERROR! One of the matrices is a null pointer.");
-        return;
-    }
-    if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||
-        (transb == CblasConjTrans || transb == CblasConjNoTrans)) {
-        fprintf(stderr, "ERROR! Conjugate transpose is not supported for integer GEMM.");
-        return;
-    }
-    if (a_is_transposed) {
-        min_lda = m > 1 ? m : 1;
-    } else {
-        min_lda = k > 1 ? k : 1;
-    }
-    if (lda < min_lda) {
-        fprintf(stderr, "ERROR! Invalid LDA (leading dimension of A).");
-        return;
-    }
-    if (b_is_transposed) {
-        min_ldb = k > 1 ? k : 1;
-    } else {
-        min_ldb = n > 1 ? n : 1;
-    }
-    if (ldb < min_ldb) {
-        fprintf(stderr, "ERROR! Invalid LDB (leading dimension of B).");
-        return;
-    }
-    min_ldc = n > 1 ? n : 1;
-    if (ldc < min_ldc) {
-        fprintf(stderr, "ERROR! Invalid LDC (leading dimension of C).");
-        return;
-    }
-
-    // Quick return
-    if (m == 0 || n == 0 || ((alpha == 0 || k == 0) && beta == 1)) {
-        return;
-    }
-
-    // Scale C by beta
-    for (size_t i = 0; i < m; ++i) {
-        for (size_t j = 0; j < n; ++j) {
-            c[i * ldc + j] = (beta == 0) ? 0: c[i * ldc + j] * beta;
-        }
-    }
-
-    if (alpha == 0 || k == 0) {
-        return;
-    }
-
-    // Do C += alpha * op(A) * op(B)
-    for (size_t i = 0; i < m; ++i) {
-        for (size_t l = 0; l < k; ++l) {
-            int a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];
-            for (size_t j = 0; j < n; ++j) {
-                int b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];
-                c[i * ldc + j] += alpha * a_val * b_val;;
-            }
-        }
-    }
+#define DEFINE_GEMM(FUNC_NAME, DATA_TYPE)                                                           \
+static void FUNC_NAME(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,                   \
+           const unsigned int m, const unsigned int n, const unsigned int k,                        \
+           const DATA_TYPE alpha, const DATA_TYPE *MATRIX_RESTRICT a,                               \
+           const unsigned int lda, const DATA_TYPE *MATRIX_RESTRICT b,                              \
+           const unsigned int ldb, const DATA_TYPE beta, DATA_TYPE *MATRIX_RESTRICT c,              \
+           const unsigned int ldc) {                                                                \
+    unsigned int min_lda, min_ldb, min_ldc;                                                         \
+    bool a_is_transposed = (transa == CblasTrans);                                                  \
+    bool b_is_transposed = (transb == CblasTrans);                                                  \
+                                                                                                    \
+    if (a == NULL || b == NULL || c == NULL) {                                                      \
+        fprintf(stderr, "ERROR! One of the matrices is a null pointer.");                           \
+        return;                                                                                     \
+    }                                                                                               \
+    if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||                                 \
+        (transb == CblasConjTrans || transb == CblasConjNoTrans)) {                                 \
+        fprintf(stderr, "ERROR! Conjugate transpose is not supported for integer GEMM.");           \
+        return;                                                                                     \
+    }                                                                                               \
+    if (a_is_transposed) {                                                                          \
+        min_lda = m > 1 ? m : 1;                                                                    \
+    } else {                                                                                        \
+        min_lda = k > 1 ? k : 1;                                                                    \
+    }                                                                                               \
+    if (lda < min_lda) {                                                                            \
+        fprintf(stderr, "ERROR! Invalid LDA (leading dimension of A).");                            \
+        return;                                                                                     \
+    }                                                                                               \
+    if (b_is_transposed) {                                                                          \
+        min_ldb = k > 1 ? k : 1;                                                                    \
+    } else {                                                                                        \
+        min_ldb = n > 1 ? n : 1;                                                                    \
+    }                                                                                               \
+    if (ldb < min_ldb) {                                                                            \
+        fprintf(stderr, "ERROR! Invalid LDB (leading dimension of B).");                            \
+        return;                                                                                     \
+    }                                                                                               \
+    min_ldc = n > 1 ? n : 1;                                                                        \
+    if (ldc < min_ldc) {                                                                            \
+        fprintf(stderr, "ERROR! Invalid LDC (leading dimension of C).");                            \
+        return;                                                                                     \
+    }                                                                                               \
+                                                                                                    \
+    if (m == 0 || n == 0 || ((alpha == 0 || k == 0) && beta == 1)) {                                \
+        return;                                                                                     \
+    }                                                                                               \
+                                                                                                    \
+    for (size_t i = 0; i < m; ++i) {                                                                \
+        for (size_t j = 0; j < n; ++j) {                                                            \
+            c[i * ldc + j] = (beta == 0) ? 0: c[i * ldc + j] * beta;                                \
+        }                                                                                           \
+    }                                                                                               \
+                                                                                                    \
+    if (alpha == 0 || k == 0) {                                                                     \
+        return;                                                                                     \
+    }                                                                                               \
+                                                                                                    \
+    for (size_t i = 0; i < m; ++i) {                                                                \
+        for (size_t l = 0; l < k; ++l) {                                                            \
+            DATA_TYPE a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];                    \
+            for (size_t j = 0; j < n; ++j) {                                                        \
+                DATA_TYPE b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];                \
+                c[i * ldc + j] += alpha * a_val * b_val;                                            \
+            }                                                                                       \
+        }                                                                                           \
+    }                                                                                               \
 }
 
 // Sparse BLAS-like function for gathering elements from a
@@ -700,6 +733,34 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
                 c, ldc);
 }
 
+// Wrapper function for cblas_sgemm
+void float_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+           const unsigned int m, const unsigned int n, const unsigned int k,
+           const float alpha, const float *a, const unsigned int lda, const float *b,
+           const unsigned int ldb, const float beta, float *c,
+           const unsigned int ldc) {
+    cblas_sgemm(CblasRowMajor, transa, transb,
+                m, n, k,
+                alpha, a, lda,
+                b, ldb, beta,
+                c, ldc);
+}
+
+DEFINE_AXPY(iaxpy, int)
+DEFINE_COPY(icopy, int)
+DEFINE_SCAL(iscal, int)
+DEFINE_GEMM(igemm, int)
+
+DEFINE_AXPY(i32_axpy, int32_t)
+DEFINE_COPY(i32_copy, int32_t)
+DEFINE_SCAL(i32_scal, int32_t)
+DEFINE_GEMM(i32_gemm, int32_t)
+
+DEFINE_AXPY(i64_axpy, int64_t)
+DEFINE_COPY(i64_copy, int64_t)
+DEFINE_SCAL(i64_scal, int64_t)
+DEFINE_GEMM(i64_gemm, int64_t)
+
 /************************************************************************/
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
@@ -718,10 +779,56 @@ DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int)
-DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy, int)
 DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
+
+/************************************************************************/
+/***************Functions for MatrixI32 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(mati32_prepare, MatrixI32, int32_t)
+DEFINE_MATRIX_CREATE(mati32_create, MatrixI32, int32_t, mati32_prepare)
+DEFINE_MATRIX_ASSIGN(mati32_assign, MatrixI32, int32_t)
+DEFINE_MATRIX_COPY(mati32_copy, MatrixI32, i32_copy, mati32_prepare)
+DEFINE_MATRIX_FILL(mati32_fill, MatrixI32, int32_t)
+DEFINE_MATRIX_SET_DATA(mati32_set_data, MatrixI32, int32_t)
+DEFINE_MATRIX_SCALE(mati32_scale, MatrixI32, int32_t, i32_scal)
+DEFINE_MATRIX_REPEAT(mati32_repeat, MatrixI32, int32_t, mati32_create, i32_copy)
+DEFINE_MATRIX_PRINT(mati32_print, MatrixI32, "%6" PRId32)
+DEFINE_MATRIX_RANGE(mati32_range, MatrixI32, int32_t, mati32_prepare)
+DEFINE_MATRIX_ADD_SCALAR(mati32_add_scalar, MatrixI32, int32_t)
+DEFINE_MATRIX_ADD(mati32_add, MatrixI32, i32_axpy)
+DEFINE_MATRIX_SUB(mati32_sub, MatrixI32, i32_axpy)
+DEFINE_MATRIX_VEC_ADD(mati32_vec_add, MatrixI32, i32_axpy, int32_t)
+DEFINE_MATRIX_VEC_SUB(mati32_vec_sub, MatrixI32, i32_axpy, int32_t)
+DEFINE_MATRIX_MUL(mati32_mul, MatrixI32, int32_t, i32_gemm, mati32_prepare)
+DEFINE_MATRIX_GATHER(mati32_gather, MatrixI32, MatrixI32, i32_copy)
+DEFINE_MATRIX_DESTROY(mati32_destroy, MatrixI32)
+
+/************************************************************************/
+/***************Functions for MatrixI64 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(mati64_prepare, MatrixI64, int64_t)
+DEFINE_MATRIX_CREATE(mati64_create, MatrixI64, int64_t, mati64_prepare)
+DEFINE_MATRIX_ASSIGN(mati64_assign, MatrixI64, int64_t)
+DEFINE_MATRIX_COPY(mati64_copy, MatrixI64, i64_copy, mati64_prepare)
+DEFINE_MATRIX_FILL(mati64_fill, MatrixI64, int64_t)
+DEFINE_MATRIX_SET_DATA(mati64_set_data, MatrixI64, int64_t)
+DEFINE_MATRIX_SCALE(mati64_scale, MatrixI64, int64_t, i64_scal)
+DEFINE_MATRIX_REPEAT(mati64_repeat, MatrixI64, int64_t, mati64_create, i64_copy)
+DEFINE_MATRIX_PRINT(mati64_print, MatrixI64, "%8" PRId64)
+DEFINE_MATRIX_RANGE(mati64_range, MatrixI64, int64_t, mati64_prepare)
+DEFINE_MATRIX_ADD_SCALAR(mati64_add_scalar, MatrixI64, int64_t)
+DEFINE_MATRIX_ADD(mati64_add, MatrixI64, i64_axpy)
+DEFINE_MATRIX_SUB(mati64_sub, MatrixI64, i64_axpy)
+DEFINE_MATRIX_VEC_ADD(mati64_vec_add, MatrixI64, i64_axpy, int64_t)
+DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy, int64_t)
+DEFINE_MATRIX_MUL(mati64_mul, MatrixI64, int64_t, i64_gemm, mati64_prepare)
+DEFINE_MATRIX_GATHER(mati64_gather, MatrixI64, MatrixI64, i64_copy)
+DEFINE_MATRIX_DESTROY(mati64_destroy, MatrixI64)
 
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
@@ -796,11 +903,56 @@ DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy, double)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 
+/************************************************************************/
+/***************Functions for MatrixF32 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(matf32_prepare, MatrixF32, float)
+DEFINE_MATRIX_CREATE(matf32_create, MatrixF32, float, matf32_prepare)
+DEFINE_MATRIX_ASSIGN(matf32_assign, MatrixF32, float)
+DEFINE_MATRIX_COPY(matf32_copy, MatrixF32, cblas_scopy, matf32_prepare)
+DEFINE_MATRIX_FILL(matf32_fill, MatrixF32, float)
+DEFINE_MATRIX_SET_DATA(matf32_set_data, MatrixF32, float)
+DEFINE_MATRIX_SCALE(matf32_scale, MatrixF32, float, cblas_sscal)
+DEFINE_MATRIX_REPEAT(matf32_repeat, MatrixF32, float, matf32_create, cblas_scopy)
+DEFINE_MATRIX_PRINT(matf32_print, MatrixF32, "%12.06f")
+DEFINE_MATRIX_RANGE(matf32_range, MatrixF32, float, matf32_prepare)
+DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
+DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
+DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy, float)
+DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
+DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_scopy)
+DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
+
+/************************************************************************/
+/***************Functions for MatrixF64 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(matf64_prepare, MatrixF64, double)
+DEFINE_MATRIX_CREATE(matf64_create, MatrixF64, double, matf64_prepare)
+DEFINE_MATRIX_ASSIGN(matf64_assign, MatrixF64, double)
+DEFINE_MATRIX_COPY(matf64_copy, MatrixF64, cblas_dcopy, matf64_prepare)
+DEFINE_MATRIX_FILL(matf64_fill, MatrixF64, double)
+DEFINE_MATRIX_SET_DATA(matf64_set_data, MatrixF64, double)
+DEFINE_MATRIX_SCALE(matf64_scale, MatrixF64, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(matf64_repeat, MatrixF64, double, matf64_create, cblas_dcopy)
+DEFINE_MATRIX_PRINT(matf64_print, MatrixF64, "%12.06lf")
+DEFINE_MATRIX_RANGE(matf64_range, MatrixF64, double, matf64_prepare)
+DEFINE_MATRIX_ADD_SCALAR(matf64_add_scalar, MatrixF64, double)
+DEFINE_MATRIX_ADD(matf64_add, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_SUB(matf64_sub, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double)
+DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy, double)
+DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, double_gemm_wrapper, matf64_prepare)
+DEFINE_MATRIX_GATHER(matf64_gather, MatrixF64, MatrixI32, cblas_dcopy)
+DEFINE_MATRIX_DESTROY(matf64_destroy, MatrixF64)
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
 MatrixStatusCode mat_fill_random(Matrix *mat) {
@@ -828,11 +980,9 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
         means->ncols != 1 || stds->ncols != 1) {
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
     }
-    for (size_t i = 0; i < mat->nrows; i++) {
-        for (size_t j = 0; j < mat->ncols; j++) {
-            if (stds->data[j] == 0.0) {
-                RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
-            }
+    for (size_t j = 0; j < mat->ncols; j++) {
+        if (stds->data[j] == 0.0) {
+            RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
         }
     }
 

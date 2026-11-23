@@ -3,23 +3,29 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation faults.
+// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation
+// faults.
 #define MATRIX_INIT {0}
 
-// Matrix for double precision data
-typedef struct {
-    size_t nrows, ncols;
-    double      *data;
-    size_t capacity;
-} Matrix;
+#define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE)               \
+    typedef struct {                                            \
+        uint64_t magic;                                         \
+        size_t  nrows, ncols;                                   \
+        C_TYPE *data;                                           \
+        size_t  capacity;                                       \
+    } STRUCT_NAME;
 
-// Matrix for integer data
-typedef struct {
-    size_t nrows, ncols;
-    int         *data;
-    size_t capacity;
-} IntMatrix;
+DEFINE_MATRIX_STRUCT(MatrixI32, int32_t)
+DEFINE_MATRIX_STRUCT(MatrixI64, int64_t)
+DEFINE_MATRIX_STRUCT(MatrixF32, float)
+DEFINE_MATRIX_STRUCT(MatrixF64, double)
+
+#undef DEFINE_MATRIX_STRUCT
+
+typedef MatrixF64 Matrix;
+typedef MatrixI32 IntMatrix;
 
 // Operation status codes
 typedef enum {
@@ -34,9 +40,11 @@ typedef enum {
     MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE,
     MATRIX_ERR_ZERO_STD_DEV,
     MATRIX_ERR_INPLACE_MATMUL,
+    MATRIX_ERR_UNINITIALIZED
 } MatrixStatusCode;
 
-static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row, int col, const char *func, int line) {
+static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row,
+                                    int col, const char *func, int line) {
     if (matrix == NULL) {
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
         abort();
@@ -54,7 +62,9 @@ static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t nco
 // Matrix elementwise access
 // NOTE: Do not call this with an expression in place of `matrix`, otherwise the result might be
 // undefined as the `matrix` argument is evaluated four times in the macro expansion.
-#define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
-    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func__, __LINE__)])
+#define MATRIX_AT(matrix, row, col)                                                               \
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset(                                   \
+        (matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, \
+        (row), (col), __func__, __LINE__)])
 
 #endif // MATRIX_TYPES_H

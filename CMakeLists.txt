@@ -20,9 +20,6 @@ add_subdirectory(benchmarks)
 # Set the version of the library
 set_target_properties(${PROJECT_LIBRARY_NAME} PROPERTIES 
     VERSION ${PROJECT_VERSION}
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-    C_EXTENSIONS OFF
 )
 
 # Install the library and headers
@@ -33,7 +30,11 @@ install(TARGETS ${PROJECT_LIBRARY_NAME}
     RUNTIME DESTINATION bin
     INCLUDES DESTINATION include
 )
-install(FILES ${PROJECT_ROOT_DIR}/src/matrix.h DESTINATION include)
+install(FILES 
+    ${PROJECT_ROOT_DIR}/src/matrix.h 
+    ${PROJECT_ROOT_DIR}/src/matrix_types.h 
+    DESTINATION include
+)
 
 # Create a package configuration file
 include(CMakePackageConfigHelpers)
