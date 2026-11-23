@@ -25,6 +25,13 @@
 
 #include "matrix.h"
 
+// restrict keyword for enabling compiler SIMD vectorization
+#ifdef __cplusplus
+#define MATRIX_RESTRICT __restrict
+#else
+#define MATRIX_RESTRICT restrict
+#endif
+
 #ifdef _WIN32
 #    include <limits.h>
 #endif
@@ -372,9 +379,13 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
-        const DATA_TYPE one = 1;                                                                        \
+        DATA_TYPE* MATRIX_RESTRICT mat_data = mat->data;                                                \
+        const DATA_TYPE* MATRIX_RESTRICT vec_data = vec->data;                                          \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
-            AXPY_FUNC(mat->ncols, vec->data[i], &one, 0, &mat->data[i * mat->ncols], 1);                \
+            for (size_t j=0; j < mat->ncols; ++j) {                                                     \
+                DATA_TYPE* MATRIX_RESTRICT row = &mat_data[i*mat->ncols];                               \
+                row[j] += vec_data[i];                                                                  \
+            }                                                                                           \
         }                                                                                               \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
@@ -384,7 +395,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // Subtraction is done as: A := A - B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC)                                        \
+#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
@@ -406,9 +417,12 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
             RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                              \
                          "Row dimension mismatch between matrix and column vector.");                   \
         }                                                                                               \
+        DATA_TYPE* MATRIX_RESTRICT mat_data = mat->data;                                                \
+        const DATA_TYPE* MATRIX_RESTRICT vec_data = vec->data;                                          \
         for (size_t i=0; i<mat->nrows; ++i) {                                                           \
             for (size_t j=0; j < mat->ncols; ++j) {                                                     \
-                mat->data[i*mat->ncols + j] -= vec->data[i];                                            \
+                DATA_TYPE* MATRIX_RESTRICT row = &mat_data[i*mat->ncols];                               \
+                row[j] -= vec_data[i];                                                                  \
             }                                                                                           \
         }                                                                                               \
     }                                                                                                   \
@@ -549,8 +563,9 @@ static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha, DATA_TYPE *x
 
 // Copies a vector y := x. (?copy)
 #define DEFINE_COPY(FUNC_NAME, DATA_TYPE)                                                    \
-static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *x, const unsigned int incx,    \
-           DATA_TYPE *y, const unsigned int incy) {                                          \
+static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *MATRIX_RESTRICT x,             \
+           const unsigned int incx,                                                          \
+           DATA_TYPE *MATRIX_RESTRICT y, const unsigned int incy) {                          \
     if (x == NULL || y == NULL) {                                                            \
         return;                                                                              \
     }                                                                                        \
@@ -560,7 +575,7 @@ static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *x, const unsigned 
     }                                                                                        \
                                                                                              \
     if (incx == 1 && incy == 1) {                                                            \
-        memcpy(y, x, num_elem * sizeof(DATA_TYPE));                                                \
+        memcpy(y, x, num_elem * sizeof(DATA_TYPE));                                          \
         return;                                                                              \
     }                                                                                        \
                                                                                              \
@@ -572,8 +587,10 @@ static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *x, const unsigned 
 // Scales a vector x and adds it to another vector y.(?axpy)
 // y := alpha * x + y
 #define DEFINE_AXPY(FUNC_NAME, DATA_TYPE)                                                   \
-static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha, const DATA_TYPE *x,     \
-           const unsigned int incx, DATA_TYPE *y, const unsigned int incy) {                \
+static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha,                         \
+           const DATA_TYPE *MATRIX_RESTRICT x,                                              \
+           const unsigned int incx,                                                         \
+           DATA_TYPE *MATRIX_RESTRICT y, const unsigned int incy) {                         \
     if (x == NULL || y == NULL) {                                                           \
         return;                                                                             \
     }                                                                                       \
@@ -597,8 +614,9 @@ static void FUNC_NAME(const size_t num_elem, const DATA_TYPE alpha, const DATA_T
 #define DEFINE_GEMM(FUNC_NAME, DATA_TYPE)                                                           \
 static void FUNC_NAME(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,                   \
            const unsigned int m, const unsigned int n, const unsigned int k,                        \
-           const DATA_TYPE alpha, const DATA_TYPE *a, const unsigned int lda, const DATA_TYPE *b,   \
-           const unsigned int ldb, const DATA_TYPE beta, DATA_TYPE *c,                              \
+           const DATA_TYPE alpha, const DATA_TYPE *MATRIX_RESTRICT a,                               \
+           const unsigned int lda, const DATA_TYPE *MATRIX_RESTRICT b,                              \
+           const unsigned int ldb, const DATA_TYPE beta, DATA_TYPE *MATRIX_RESTRICT c,              \
            const unsigned int ldc) {                                                                \
     unsigned int min_lda, min_ldb, min_ldc;                                                         \
     bool a_is_transposed = (transa == CblasTrans);                                                  \
@@ -749,7 +767,7 @@ DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
 DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int)
-DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy)
+DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy, int)
 DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
@@ -772,7 +790,7 @@ DEFINE_MATRIX_ADD_SCALAR(mati32_add_scalar, MatrixI32, int32_t)
 DEFINE_MATRIX_ADD(mati32_add, MatrixI32, i32_axpy)
 DEFINE_MATRIX_SUB(mati32_sub, MatrixI32, i32_axpy)
 DEFINE_MATRIX_VEC_ADD(mati32_vec_add, MatrixI32, i32_axpy, int32_t)
-DEFINE_MATRIX_VEC_SUB(mati32_vec_sub, MatrixI32, i32_axpy)
+DEFINE_MATRIX_VEC_SUB(mati32_vec_sub, MatrixI32, i32_axpy, int32_t)
 DEFINE_MATRIX_MUL(mati32_mul, MatrixI32, int32_t, i32_gemm, mati32_prepare)
 DEFINE_MATRIX_GATHER(mati32_gather, MatrixI32, MatrixI32, i32_copy)
 DEFINE_MATRIX_DESTROY(mati32_destroy, MatrixI32)
@@ -795,7 +813,7 @@ DEFINE_MATRIX_ADD_SCALAR(mati64_add_scalar, MatrixI64, int64_t)
 DEFINE_MATRIX_ADD(mati64_add, MatrixI64, i64_axpy)
 DEFINE_MATRIX_SUB(mati64_sub, MatrixI64, i64_axpy)
 DEFINE_MATRIX_VEC_ADD(mati64_vec_add, MatrixI64, i64_axpy, int64_t)
-DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy)
+DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy, int64_t)
 DEFINE_MATRIX_MUL(mati64_mul, MatrixI64, int64_t, i64_gemm, mati64_prepare)
 DEFINE_MATRIX_GATHER(mati64_gather, MatrixI64, MatrixI64, i64_copy)
 DEFINE_MATRIX_DESTROY(mati64_destroy, MatrixI64)
@@ -873,7 +891,7 @@ DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy, double)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
@@ -896,7 +914,7 @@ DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
 DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
 DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
 DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
-DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy, float)
 DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
 DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_scopy)
 DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
@@ -919,7 +937,7 @@ DEFINE_MATRIX_ADD_SCALAR(matf64_add_scalar, MatrixF64, double)
 DEFINE_MATRIX_ADD(matf64_add, MatrixF64, cblas_daxpy)
 DEFINE_MATRIX_SUB(matf64_sub, MatrixF64, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double)
-DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy, double)
 DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, double_gemm_wrapper, matf64_prepare)
 DEFINE_MATRIX_GATHER(matf64_gather, MatrixF64, MatrixI32, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(matf64_destroy, MatrixF64)
