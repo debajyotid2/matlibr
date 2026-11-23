@@ -4,20 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation faults.
+// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation
+// faults.
 #define MATRIX_INIT {0}
 
 // Matrix for double precision data
 typedef struct {
-    size_t nrows, ncols;
-    double      *data;
-    size_t capacity;
+    size_t  nrows, ncols;
+    double *data;
+    size_t  capacity;
 } Matrix;
 
 // Matrix for integer data
 typedef struct {
     size_t nrows, ncols;
-    int         *data;
+    int   *data;
     size_t capacity;
 } IntMatrix;
 
@@ -36,7 +37,8 @@ typedef enum {
     MATRIX_ERR_INPLACE_MATMUL,
 } MatrixStatusCode;
 
-static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row, int col, const char *func, int line) {
+static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row,
+                                    int col, const char *func, int line) {
     if (matrix == NULL) {
         fprintf(stderr, "MATRIX LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
         abort();
@@ -54,7 +56,9 @@ static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t nco
 // Matrix elementwise access
 // NOTE: Do not call this with an expression in place of `matrix`, otherwise the result might be
 // undefined as the `matrix` argument is evaluated four times in the macro expansion.
-#define MATRIX_AT(matrix, row, col)                                                                                                                                                         \
-    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset((matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, (row), (col), __func__, __LINE__)])
+#define MATRIX_AT(matrix, row, col)                                                               \
+    (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset(                                   \
+        (matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, \
+        (row), (col), __func__, __LINE__)])
 
 #endif // MATRIX_TYPES_H

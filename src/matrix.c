@@ -51,8 +51,10 @@ double rand_double() {
 }
 
 // Function for displaying and handling errors
-static void error_handler(const char *function, int line, MatrixStatusCode status_code, const char *msg) {
-    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code, msg);
+static void error_handler(const char *function, int line, MatrixStatusCode status_code,
+                          const char *msg) {
+    fprintf(stderr, "MATRIX LIB ERROR: %s,%d: - error code %d: %s\n", function, line, status_code,
+            msg);
 }
 
 // clang-format off

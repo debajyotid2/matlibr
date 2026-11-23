@@ -3,6 +3,6 @@ IndentWidth: 4
 AllowShortEnumsOnASingleLine: false
 AlignConsecutiveDeclarations: true
 AlignEscapedNewlines: LeftWithLastLine
-ColumnLimit: 200
+ColumnLimit: 100
 IndentPPDirectives: AfterHash
 PPIndentWidth: 4
