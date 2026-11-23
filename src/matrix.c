@@ -80,7 +80,7 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     if (nrows <= 0 || ncols <= 0) {                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Invalid 'nrows' or 'ncols'.");               \
     }                                                                                               \
-    size_t size = nrows * ncols;                                                                    \
+    size_t size = (size_t)nrows * (size_t)ncols;                                                    \
                                                                                                     \
     if (!matrix->data) {                                                                            \
         matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
@@ -118,7 +118,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols) {         
     if (res != MATRIX_SUCCESS) {                                                                    \
         return res;                                                                                 \
     }                                                                                               \
-    memset(matrix->data, 0, nrows * ncols * sizeof(DATA_TYPE));                                     \
+    memset(matrix->data, 0, (size_t)nrows * (size_t)ncols * sizeof(DATA_TYPE));                     \
     return MATRIX_SUCCESS;                                                                          \
 }
 
