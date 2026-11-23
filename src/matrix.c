@@ -702,6 +702,19 @@ void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tra
                 c, ldc);
 }
 
+// Wrapper function for cblas_sgemm
+void float_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
+           const unsigned int m, const unsigned int n, const unsigned int k,
+           const float alpha, const float *a, const unsigned int lda, const float *b,
+           const unsigned int ldb, const float beta, float *c,
+           const unsigned int ldc) {
+    cblas_sgemm(CblasRowMajor, transa, transb,
+                m, n, k,
+                alpha, a, lda,
+                b, ldb, beta,
+                c, ldc);
+}
+
 /************************************************************************/
 /***************Functions for IntMatrix (integer data)******************/
 /************************************************************************/
@@ -853,24 +866,24 @@ DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
 /***************Functions for MatrixF32 *********************************/
 /************************************************************************/
 
-// DEFINE_MATRIX_PREPARE(matf32_prepare, MatrixF32, float)
-// DEFINE_MATRIX_CREATE(matf32_create, MatrixF32, float, matf32_prepare)
-// DEFINE_MATRIX_ASSIGN(matf32_assign, MatrixF32, float)
-// DEFINE_MATRIX_COPY(matf32_copy, MatrixF32, cblas_scopy, matf32_prepare)
-// DEFINE_MATRIX_FILL(matf32_fill, MatrixF32, float)
-// DEFINE_MATRIX_SET_DATA(matf32_set_data, MatrixF32, float)
-// DEFINE_MATRIX_SCALE(matf32_scale, MatrixF32, float, cblas_sscal)
-// DEFINE_MATRIX_REPEAT(matf32_repeat, MatrixF32, float, matf32_create, cblas_scopy)
-// DEFINE_MATRIX_PRINT(matf32_print, MatrixF32, "%12.06f")
-// DEFINE_MATRIX_RANGE(matf32_range, MatrixF32, float, matf32_prepare)
-// DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
-// DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
-// DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
-// DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
-// DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy)
-// DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
-// DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_dcopy)
-// DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
+DEFINE_MATRIX_PREPARE(matf32_prepare, MatrixF32, float)
+DEFINE_MATRIX_CREATE(matf32_create, MatrixF32, float, matf32_prepare)
+DEFINE_MATRIX_ASSIGN(matf32_assign, MatrixF32, float)
+DEFINE_MATRIX_COPY(matf32_copy, MatrixF32, cblas_scopy, matf32_prepare)
+DEFINE_MATRIX_FILL(matf32_fill, MatrixF32, float)
+DEFINE_MATRIX_SET_DATA(matf32_set_data, MatrixF32, float)
+DEFINE_MATRIX_SCALE(matf32_scale, MatrixF32, float, cblas_sscal)
+DEFINE_MATRIX_REPEAT(matf32_repeat, MatrixF32, float, matf32_create, cblas_scopy)
+DEFINE_MATRIX_PRINT(matf32_print, MatrixF32, "%12.06f")
+DEFINE_MATRIX_RANGE(matf32_range, MatrixF32, float, matf32_prepare)
+DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
+DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
+DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy)
+DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
+DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_scopy)
+DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
 
 /************************************************************************/
 /***************Functions for MatrixF64 *********************************/
