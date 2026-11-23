@@ -25,7 +25,101 @@
 extern "C" {
 #endif
 
-// Functions for integer matrices
+// Functions for int32 matrices
+MatrixStatusCode mati32_create(MatrixI32 *matrix, int nrow, int ncol);
+MatrixStatusCode mati32_assign(MatrixI32 *matrix, int nrow, int ncol, int value);
+MatrixStatusCode mati32_copy(MatrixI32 *copy, const MatrixI32 *mat);
+MatrixStatusCode mati32_range(MatrixI32 *mat, int low, int high, int step, unsigned int dimension);
+MatrixStatusCode mati32_print(const MatrixI32 *matrix);
+MatrixStatusCode mati32_fill(MatrixI32 *matrix, const int value);
+MatrixStatusCode mati32_fill_random(MatrixI32 *matrix, int low, int high, bool replace);
+MatrixStatusCode mati32_set_data(MatrixI32 *matrix, const int *src, size_t count);
+MatrixStatusCode mati32_scale(MatrixI32 *mat, const int fac);
+MatrixStatusCode mati32_add_scalar(MatrixI32 *mat, const int scalar);
+MatrixStatusCode mati32_add(MatrixI32 *mat_a, const MatrixI32 *mat_b);
+MatrixStatusCode mati32_sub(MatrixI32 *mat_a, const MatrixI32 *mat_b);
+MatrixStatusCode mati32_mul(const MatrixI32 *mat_a, bool transpose_a, const MatrixI32 *mat_b,
+                            bool transpose_b, MatrixI32 *result);
+MatrixStatusCode mati32_repeat(MatrixI32 *repeated, const MatrixI32 *vec, unsigned int dimension,
+                               unsigned int repeats);
+MatrixStatusCode mati32_vec_add(MatrixI32 *mat, const MatrixI32 *vec);
+MatrixStatusCode mati32_vec_sub(MatrixI32 *mat, const MatrixI32 *vec);
+MatrixStatusCode mati32_gather(const MatrixI32 *from, MatrixI32 *to, const MatrixI32 *indices,
+                               size_t dimension);
+MatrixStatusCode mati32_destroy(MatrixI32 *matrix);
+
+// Functions for int64 matrices
+MatrixStatusCode mati64_create(MatrixI64 *matrix, int nrow, int ncol);
+MatrixStatusCode mati64_assign(MatrixI64 *matrix, int nrow, int ncol, int value);
+MatrixStatusCode mati64_copy(MatrixI64 *copy, const MatrixI64 *mat);
+MatrixStatusCode mati64_range(MatrixI64 *mat, int low, int high, int step, unsigned int dimension);
+MatrixStatusCode mati64_print(const MatrixI64 *matrix);
+MatrixStatusCode mati64_fill(MatrixI64 *matrix, const int value);
+MatrixStatusCode mati64_fill_random(MatrixI64 *matrix, int low, int high, bool replace);
+MatrixStatusCode mati64_set_data(MatrixI64 *matrix, const int *src, size_t count);
+MatrixStatusCode mati64_scale(MatrixI64 *mat, const int fac);
+MatrixStatusCode mati64_add_scalar(MatrixI64 *mat, const int scalar);
+MatrixStatusCode mati64_add(MatrixI64 *mat_a, const MatrixI64 *mat_b);
+MatrixStatusCode mati64_sub(MatrixI64 *mat_a, const MatrixI64 *mat_b);
+MatrixStatusCode mati64_mul(const MatrixI64 *mat_a, bool transpose_a, const MatrixI64 *mat_b,
+                            bool transpose_b, MatrixI64 *result);
+MatrixStatusCode mati64_repeat(MatrixI64 *repeated, const MatrixI64 *vec, unsigned int dimension,
+                               unsigned int repeats);
+MatrixStatusCode mati64_vec_add(MatrixI64 *mat, const MatrixI64 *vec);
+MatrixStatusCode mati64_vec_sub(MatrixI64 *mat, const MatrixI64 *vec);
+MatrixStatusCode mati64_gather(const MatrixI64 *from, MatrixI64 *to, const MatrixI64 *indices,
+                               size_t dimension);
+MatrixStatusCode mati64_destroy(MatrixI64 *matrix);
+
+// Functions for float32 (float) matrices
+MatrixStatusCode matf32_create(MatrixF32 *matrix, int nrow, int ncol);
+MatrixStatusCode matf32_assign(MatrixF32 *matrix, int nrow, int ncol, double value);
+MatrixStatusCode matf32_copy(MatrixF32 *copy, const MatrixF32 *mat);
+MatrixStatusCode matf32_range(MatrixF32 *mat, double low, double high, double step,
+                           unsigned int dimension);
+MatrixStatusCode matf32_print(const MatrixF32 *matrix);
+MatrixStatusCode matf32_fill(MatrixF32 *matrix, const double value);
+MatrixStatusCode matf32_fill_random(MatrixF32 *matrix);
+MatrixStatusCode matf32_set_data(MatrixF32 *matrix, const double *src, size_t count);
+MatrixStatusCode matf32_scale(MatrixF32 *mat, const double fac);
+MatrixStatusCode matf32_add_scalar(MatrixF32 *mat, const double scalar);
+MatrixStatusCode matf32_add(MatrixF32 *mat_a, const MatrixF32 *mat_b);
+MatrixStatusCode matf32_sub(MatrixF32 *mat_a, const MatrixF32 *mat_b);
+MatrixStatusCode matf32_mul(const MatrixF32 *mat_a, bool transpose_a, const MatrixF32 *mat_b,
+                         bool transpose_b, MatrixF32 *result);
+MatrixStatusCode matf32_repeat(MatrixF32 *repeated, const MatrixF32 *vec, unsigned int dimension,
+                            unsigned int repeats);
+MatrixStatusCode matf32_vec_add(MatrixF32 *mat, const MatrixF32 *vec);
+MatrixStatusCode matf32_vec_sub(MatrixF32 *mat, const MatrixF32 *vec);
+MatrixStatusCode matf32_gather(const MatrixF32 *from, MatrixF32 *to, const IntMatrix *indices,
+                            unsigned int dimension);
+MatrixStatusCode matf32_destroy(MatrixF32 *matrix);
+
+// Functions for float64 (float) matrices
+MatrixStatusCode matf64_create(MatrixF64 *matrix, int nrow, int ncol);
+MatrixStatusCode matf64_assign(MatrixF64 *matrix, int nrow, int ncol, double value);
+MatrixStatusCode matf64_copy(MatrixF64 *copy, const MatrixF64 *mat);
+MatrixStatusCode matf64_range(MatrixF64 *mat, double low, double high, double step,
+                           unsigned int dimension);
+MatrixStatusCode matf64_print(const MatrixF64 *matrix);
+MatrixStatusCode matf64_fill(MatrixF64 *matrix, const double value);
+MatrixStatusCode matf64_fill_random(MatrixF64 *matrix);
+MatrixStatusCode matf64_set_data(MatrixF64 *matrix, const double *src, size_t count);
+MatrixStatusCode matf64_scale(MatrixF64 *mat, const double fac);
+MatrixStatusCode matf64_add_scalar(MatrixF64 *mat, const double scalar);
+MatrixStatusCode matf64_add(MatrixF64 *mat_a, const MatrixF64 *mat_b);
+MatrixStatusCode matf64_sub(MatrixF64 *mat_a, const MatrixF64 *mat_b);
+MatrixStatusCode matf64_mul(const MatrixF64 *mat_a, bool transpose_a, const MatrixF64 *mat_b,
+                         bool transpose_b, MatrixF64 *result);
+MatrixStatusCode matf64_repeat(MatrixF64 *repeated, const MatrixF64 *vec, unsigned int dimension,
+                            unsigned int repeats);
+MatrixStatusCode matf64_vec_add(MatrixF64 *mat, const MatrixF64 *vec);
+MatrixStatusCode matf64_vec_sub(MatrixF64 *mat, const MatrixF64 *vec);
+MatrixStatusCode matf64_gather(const MatrixF64 *from, MatrixF64 *to, const IntMatrix *indices,
+                            unsigned int dimension);
+MatrixStatusCode matf64_destroy(MatrixF64 *matrix);
+
+// Functions for int32 (integer) matrices (for backwards compatibility)
 MatrixStatusCode intmat_create(IntMatrix *matrix, int nrow, int ncol);
 MatrixStatusCode intmat_assign(IntMatrix *matrix, int nrow, int ncol, int value);
 MatrixStatusCode intmat_copy(IntMatrix *copy, const IntMatrix *mat);
@@ -48,7 +142,7 @@ MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMa
                                size_t dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
-// Functions for double matrices
+// Functions for float64 (double) matrices (for backwards compatibility)
 MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
 MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);

@@ -725,6 +725,52 @@ DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
 
+/************************************************************************/
+/***************Functions for MatrixI32 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(matrixi32_prepare, MatrixI32, int32_t)
+DEFINE_MATRIX_CREATE(matrixi32_create, MatrixI32, int32_t, matrixi32_prepare)
+DEFINE_MATRIX_ASSIGN(matrixi32_assign, MatrixI32, int32_t)
+DEFINE_MATRIX_COPY(matrixi32_copy, MatrixI32, icopy, matrixi32_prepare)
+DEFINE_MATRIX_FILL(matrixi32_fill, MatrixI32, int32_t)
+DEFINE_MATRIX_SET_DATA(matrixi32_set_data, MatrixI32, int32_t)
+DEFINE_MATRIX_SCALE(matrixi32_scale, MatrixI32, int32_t, iscal)
+DEFINE_MATRIX_REPEAT(matrixi32_repeat, MatrixI32, int32_t, matrixi32_create, icopy)
+DEFINE_MATRIX_PRINT(matrixi32_print, MatrixI32, "%6d")
+DEFINE_MATRIX_RANGE(matrixi32_range, MatrixI32, int32_t, matrixi32_prepare)
+DEFINE_MATRIX_ADD_SCALAR(matrixi32_add_scalar, MatrixI32, int32_t)
+DEFINE_MATRIX_ADD(matrixi32_add, MatrixI32, iaxpy)
+DEFINE_MATRIX_SUB(matrixi32_sub, MatrixI32, iaxpy)
+DEFINE_MATRIX_VEC_ADD(matrixi32_vec_add, MatrixI32, iaxpy, int32_t)
+DEFINE_MATRIX_VEC_SUB(matrixi32_vec_sub, MatrixI32, iaxpy)
+DEFINE_MATRIX_MUL(matrixi32_mul, MatrixI32, int32_t, igemm, matrixi32_prepare)
+DEFINE_MATRIX_GATHER(matrixi32_gather, MatrixI32, MatrixI32, icopy)
+DEFINE_MATRIX_DESTROY(matrixi32_destroy, MatrixI32)
+
+/************************************************************************/
+/***************Functions for MatrixI64 *********************************/
+/************************************************************************/
+
+// DEFINE_MATRIX_PREPARE(matrixi64_prepare, MatrixI64, int64_t)
+// DEFINE_MATRIX_CREATE(matrixi64_create, MatrixI64, int64_t, matrixi64_prepare)
+// DEFINE_MATRIX_ASSIGN(matrixi64_assign, MatrixI64, int64_t)
+// DEFINE_MATRIX_COPY(matrixi64_copy, MatrixI64, icopy, matrixi64_prepare)
+// DEFINE_MATRIX_FILL(matrixi64_fill, MatrixI64, int64_t)
+// DEFINE_MATRIX_SET_DATA(matrixi64_set_data, MatrixI64, int64_t)
+// DEFINE_MATRIX_SCALE(matrixi64_scale, MatrixI64, int64_t, iscal)
+// DEFINE_MATRIX_REPEAT(matrixi64_repeat, MatrixI64, int64_t, matrixi64_create, icopy)
+// DEFINE_MATRIX_PRINT(matrixi64_print, MatrixI64, "%6d")
+// DEFINE_MATRIX_RANGE(matrixi64_range, MatrixI64, int64_t, matrixi64_prepare)
+// DEFINE_MATRIX_ADD_SCALAR(matrixi64_add_scalar, MatrixI64, int64_t)
+// DEFINE_MATRIX_ADD(matrixi64_add, MatrixI64, iaxpy)
+// DEFINE_MATRIX_SUB(matrixi64_sub, MatrixI64, iaxpy)
+// DEFINE_MATRIX_VEC_ADD(matrixi64_vec_add, MatrixI64, iaxpy, int64_t)
+// DEFINE_MATRIX_VEC_SUB(matrixi64_vec_sub, MatrixI64, iaxpy)
+// DEFINE_MATRIX_MUL(matrixi64_mul, MatrixI64, int64_t, igemm, matrixi64_prepare)
+// DEFINE_MATRIX_GATHER(matrixi64_gather, MatrixI64, MatrixI64, icopy)
+// DEFINE_MATRIX_DESTROY(matrixi64_destroy, MatrixI64)
+
 // Fill a matrix with random integers between low and high (exclusive)
 // with or without replacement.
 MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool replace) {
@@ -802,6 +848,52 @@ DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
+
+/************************************************************************/
+/***************Functions for MatrixF32 *********************************/
+/************************************************************************/
+
+// DEFINE_MATRIX_PREPARE(matf32_prepare, MatrixF32, float)
+// DEFINE_MATRIX_CREATE(matf32_create, MatrixF32, float, matf32_prepare)
+// DEFINE_MATRIX_ASSIGN(matf32_assign, MatrixF32, float)
+// DEFINE_MATRIX_COPY(matf32_copy, MatrixF32, cblas_scopy, matf32_prepare)
+// DEFINE_MATRIX_FILL(matf32_fill, MatrixF32, float)
+// DEFINE_MATRIX_SET_DATA(matf32_set_data, MatrixF32, float)
+// DEFINE_MATRIX_SCALE(matf32_scale, MatrixF32, float, cblas_sscal)
+// DEFINE_MATRIX_REPEAT(matf32_repeat, MatrixF32, float, matf32_create, cblas_scopy)
+// DEFINE_MATRIX_PRINT(matf32_print, MatrixF32, "%12.06f")
+// DEFINE_MATRIX_RANGE(matf32_range, MatrixF32, float, matf32_prepare)
+// DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
+// DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
+// DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
+// DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
+// DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy)
+// DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
+// DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_dcopy)
+// DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
+
+/************************************************************************/
+/***************Functions for MatrixF64 *********************************/
+/************************************************************************/
+
+DEFINE_MATRIX_PREPARE(matf64_prepare, MatrixF64, double)
+DEFINE_MATRIX_CREATE(matf64_create, MatrixF64, double, matf64_prepare)
+DEFINE_MATRIX_ASSIGN(matf64_assign, MatrixF64, double)
+DEFINE_MATRIX_COPY(matf64_copy, MatrixF64, cblas_dcopy, matf64_prepare)
+DEFINE_MATRIX_FILL(matf64_fill, MatrixF64, double)
+DEFINE_MATRIX_SET_DATA(matf64_set_data, MatrixF64, double)
+DEFINE_MATRIX_SCALE(matf64_scale, MatrixF64, double, cblas_dscal)
+DEFINE_MATRIX_REPEAT(matf64_repeat, MatrixF64, double, matf64_create, cblas_dcopy)
+DEFINE_MATRIX_PRINT(matf64_print, MatrixF64, "%12.06lf")
+DEFINE_MATRIX_RANGE(matf64_range, MatrixF64, double, matf64_prepare)
+DEFINE_MATRIX_ADD_SCALAR(matf64_add_scalar, MatrixF64, double)
+DEFINE_MATRIX_ADD(matf64_add, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_SUB(matf64_sub, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double)
+DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy)
+DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, double_gemm_wrapper, matf64_prepare)
+DEFINE_MATRIX_GATHER(matf64_gather, MatrixF64, MatrixI32, cblas_dcopy)
+DEFINE_MATRIX_DESTROY(matf64_destroy, MatrixF64)
 
 
 // Fill a matrix with random numbers between 0.0 and 1.0 (half-open)
