@@ -560,7 +560,7 @@ static void FUNC_NAME(const size_t num_elem, const DATA_TYPE *x, const unsigned 
     }                                                                                        \
                                                                                              \
     if (incx == 1 && incy == 1) {                                                            \
-        memcpy(y, x, num_elem * sizeof(int));                                                \
+        memcpy(y, x, num_elem * sizeof(DATA_TYPE));                                                \
         return;                                                                              \
     }                                                                                        \
                                                                                              \
