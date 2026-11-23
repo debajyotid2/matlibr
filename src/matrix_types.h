@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-// Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation
-// faults.
+// Matrices should be initialized to MATRIX_INIT.
+// E.g. `Matrix a = MATRIX_INIT;`
 #define MATRIX_INIT {0}
 
 #define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE)               \
