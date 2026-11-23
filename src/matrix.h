@@ -44,7 +44,7 @@ MatrixStatusCode mati32_repeat(MatrixI32 *repeated, const MatrixI32 *vec, unsign
 MatrixStatusCode mati32_vec_add(MatrixI32 *mat, const MatrixI32 *vec);
 MatrixStatusCode mati32_vec_sub(MatrixI32 *mat, const MatrixI32 *vec);
 MatrixStatusCode mati32_gather(const MatrixI32 *from, MatrixI32 *to, const MatrixI32 *indices,
-                               size_t dimension);
+                               unsigned int dimension);
 MatrixStatusCode mati32_destroy(MatrixI32 *matrix);
 
 // Functions for int64 matrices
@@ -65,8 +65,8 @@ MatrixStatusCode mati64_repeat(MatrixI64 *repeated, const MatrixI64 *vec, unsign
                                unsigned int repeats);
 MatrixStatusCode mati64_vec_add(MatrixI64 *mat, const MatrixI64 *vec);
 MatrixStatusCode mati64_vec_sub(MatrixI64 *mat, const MatrixI64 *vec);
-MatrixStatusCode mati64_gather(const MatrixI64 *from, MatrixI64 *to, const MatrixI64 *indices,
-                               size_t dimension);
+MatrixStatusCode mati64_gather(const MatrixI64 *from, MatrixI64 *to, const MatrixI32 *indices,
+                               unsigned int dimension);
 MatrixStatusCode mati64_destroy(MatrixI64 *matrix);
 
 // Functions for float32 (float) matrices
@@ -88,7 +88,7 @@ MatrixStatusCode matf32_repeat(MatrixF32 *repeated, const MatrixF32 *vec, unsign
                             unsigned int repeats);
 MatrixStatusCode matf32_vec_add(MatrixF32 *mat, const MatrixF32 *vec);
 MatrixStatusCode matf32_vec_sub(MatrixF32 *mat, const MatrixF32 *vec);
-MatrixStatusCode matf32_gather(const MatrixF32 *from, MatrixF32 *to, const IntMatrix *indices,
+MatrixStatusCode matf32_gather(const MatrixF32 *from, MatrixF32 *to, const MatrixI32 *indices,
                             unsigned int dimension);
 MatrixStatusCode matf32_destroy(MatrixF32 *matrix);
 
@@ -111,7 +111,7 @@ MatrixStatusCode matf64_repeat(MatrixF64 *repeated, const MatrixF64 *vec, unsign
                             unsigned int repeats);
 MatrixStatusCode matf64_vec_add(MatrixF64 *mat, const MatrixF64 *vec);
 MatrixStatusCode matf64_vec_sub(MatrixF64 *mat, const MatrixF64 *vec);
-MatrixStatusCode matf64_gather(const MatrixF64 *from, MatrixF64 *to, const IntMatrix *indices,
+MatrixStatusCode matf64_gather(const MatrixF64 *from, MatrixF64 *to, const MatrixI32 *indices,
                             unsigned int dimension);
 MatrixStatusCode matf64_destroy(MatrixF64 *matrix);
 
