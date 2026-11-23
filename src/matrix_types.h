@@ -3,24 +3,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 // Matrices must be initialized to MATRIX_INIT, otherwise the initialization may cause segmentation
 // faults.
 #define MATRIX_INIT {0}
 
-// Matrix for double precision data
-typedef struct {
-    size_t  nrows, ncols;
-    double *data;
-    size_t  capacity;
-} Matrix;
+#define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE)               \
+    typedef struct {                                            \
+        size_t  nrows, ncols;                                   \
+        C_TYPE *data;                                           \
+        size_t  capacity;                                       \
+    } STRUCT_NAME;
 
-// Matrix for integer data
-typedef struct {
-    size_t nrows, ncols;
-    int   *data;
-    size_t capacity;
-} IntMatrix;
+DEFINE_MATRIX_STRUCT(MatrixI32, int32_t)
+DEFINE_MATRIX_STRUCT(MatrixI64, int64_t)
+DEFINE_MATRIX_STRUCT(MatrixF32, float)
+DEFINE_MATRIX_STRUCT(MatrixF64, double)
+
+#undef DEFINE_MATRIX_STRUCT
+
+typedef MatrixF64 Matrix;
+typedef MatrixI32 IntMatrix;
 
 // Operation status codes
 typedef enum {
