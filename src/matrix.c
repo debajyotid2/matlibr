@@ -24,6 +24,7 @@
 #include <inttypes.h>
 
 #include "matrix.h"
+#include "matrix_types.h"
 
 // restrict keyword for enabling compiler SIMD vectorization
 #ifdef __cplusplus
@@ -77,6 +78,9 @@ error_handler(__func__, __LINE__, status_code, msg)
         return (status_code);                           \
     } while (0)
 
+
+#define MATRIX_MAGIC 0xFEAB1365FEDC2937ULL
+
 // Internal use function: check if a matrix is already initialized with memory.
 // If not, allocate memory and initialize it.
 #define DEFINE_MATRIX_PREPARE(FUNC_NAME, MATRIX_TYPE, DATA_TYPE)                                    \
@@ -89,14 +93,18 @@ static MatrixStatusCode FUNC_NAME(MATRIX_TYPE* matrix, int nrows, int ncols, boo
     }                                                                                               \
     size_t size = (size_t)nrows * (size_t)ncols;                                                    \
                                                                                                     \
-    if (!matrix->data) {                                                                            \
+    if (matrix->magic != MATRIX_MAGIC) {                                                            \
         matrix->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                                \
         if (!matrix->data) {                                                                        \
+            matrix->nrows = 0;                                                                      \
+            matrix->ncols = 0;                                                                      \
+            matrix->capacity = 0;                                                                   \
             RETURN_ON_ERROR(MATRIX_ERR_MEMORY_ALLOCATION, "Allocation failed.");                    \
         }                                                                                           \
         matrix->nrows = nrows;                                                                      \
         matrix->ncols = ncols;                                                                      \
         matrix->capacity = size;                                                                    \
+        matrix->magic = MATRIX_MAGIC;                                                               \
         return MATRIX_SUCCESS;                                                                      \
     }                                                                                               \
     if ((int)matrix->nrows == nrows && (int)matrix->ncols == ncols) {                               \
@@ -529,6 +537,9 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
     if (matrix == NULL) {                                                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Null pointer received.");                             \
     }                                                                                               \
+    if (matrix->magic != MATRIX_MAGIC) {                                                            \
+        RETURN_ON_ERROR(MATRIX_ERR_UNINITIALIZED, "Matrix not initialized or already destroyed");   \
+    }                                                                                               \
     if ((matrix->data) != NULL) {                                                                   \
         free(matrix->data);                                                                         \
     }                                                                                               \
@@ -536,6 +547,7 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *matrix) {                               
     matrix->nrows = 0;                                                                              \
     matrix->ncols = 0;                                                                              \
     matrix->capacity = 0;                                                                           \
+    matrix->magic = 0;                                                                              \
     return MATRIX_SUCCESS;                                                                          \
 }
 

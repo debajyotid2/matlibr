@@ -145,6 +145,14 @@ TEST_CASE("MatrixI32: Creation and Destruction", "[matrixi32]") {
 
     SECTION("Creation with null pointer") { REQUIRE(mati32_create(NULL, 3, 3) == MATRIX_ERR_NULL_PTR); }
 
+    SECTION("Creation without MATRIX_INIT, destruction and reuse") { 
+        MatrixI32 mat_b;
+        REQUIRE(mati32_create(&mat_b, 3, 3) == MATRIX_SUCCESS); 
+        REQUIRE(mati32_destroy(&mat_b) == MATRIX_SUCCESS);
+        REQUIRE(mati32_create(&mat_b, 2, 4) == MATRIX_SUCCESS); 
+        REQUIRE(mati32_destroy(&mat_b) == MATRIX_SUCCESS);
+    }
+
     SECTION("Destruction") {
         mati32_create(&mat, 2, 2);
         REQUIRE(mati32_destroy(&mat) == MATRIX_SUCCESS);

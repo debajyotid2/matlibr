@@ -11,6 +11,7 @@
 
 #define DEFINE_MATRIX_STRUCT(STRUCT_NAME, C_TYPE)               \
     typedef struct {                                            \
+        uint64_t magic;                                         \
         size_t  nrows, ncols;                                   \
         C_TYPE *data;                                           \
         size_t  capacity;                                       \
@@ -39,6 +40,7 @@ typedef enum {
     MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE,
     MATRIX_ERR_ZERO_STD_DEV,
     MATRIX_ERR_INPLACE_MATMUL,
+    MATRIX_ERR_UNINITIALIZED
 } MatrixStatusCode;
 
 static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t ncols, int row,
