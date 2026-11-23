@@ -49,15 +49,12 @@ MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 MatrixStatusCode mat_create(Matrix *matrix, int nrow, int ncol);
 MatrixStatusCode mat_assign(Matrix *matrix, int nrow, int ncol, double value);
 MatrixStatusCode mat_copy(Matrix *copy, const Matrix *mat);
-MatrixStatusCode mat_print(const Matrix *matrix);
 MatrixStatusCode mat_range(Matrix *mat, double low, double high, double step, unsigned int dimension);
+MatrixStatusCode mat_print(const Matrix *matrix);
 MatrixStatusCode mat_fill(Matrix *matrix, const double value);
-MatrixStatusCode mat_set_data(Matrix* matrix, const double* src, size_t count);
 MatrixStatusCode mat_fill_random(Matrix *matrix);
-MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means, Matrix *stds);
+MatrixStatusCode mat_set_data(Matrix* matrix, const double* src, size_t count);
 MatrixStatusCode mat_scale(Matrix *mat, const double fac);
-MatrixStatusCode mat_abs_sum(double *sum, Matrix *mat);
-MatrixStatusCode mat_norm(double *norm, Matrix *mat);
 MatrixStatusCode mat_add_scalar(Matrix *mat, const double scalar);
 MatrixStatusCode mat_add(Matrix *mat_a, const Matrix *mat_b);
 MatrixStatusCode mat_sub(Matrix *mat_a, const Matrix *mat_b);
@@ -67,6 +64,10 @@ MatrixStatusCode mat_vec_add(Matrix *mat, const Matrix *vec);
 MatrixStatusCode mat_vec_sub(Matrix *mat, const Matrix *vec);
 MatrixStatusCode mat_gather(const Matrix *from, Matrix *to, const IntMatrix *indices, unsigned int dimension);
 MatrixStatusCode mat_destroy(Matrix *matrix);
+
+MatrixStatusCode mat_fill_random_gaussian(Matrix *matrix, Matrix *means, Matrix *stds);
+MatrixStatusCode mat_abs_sum(double *sum, Matrix *mat);
+MatrixStatusCode mat_norm(double *norm, Matrix *mat);
 
 #ifdef __cplusplus
 }
