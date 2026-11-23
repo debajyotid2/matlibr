@@ -950,11 +950,9 @@ MatrixStatusCode mat_fill_random_gaussian(Matrix *mat, Matrix *means, Matrix *st
         means->ncols != 1 || stds->ncols != 1) {
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH, "Means/Stddevs matrix is of improper dimensions.");
     }
-    for (size_t i = 0; i < mat->nrows; i++) {
-        for (size_t j = 0; j < mat->ncols; j++) {
-            if (stds->data[j] == 0.0) {
-                RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
-            }
+    for (size_t j = 0; j < mat->ncols; j++) {
+        if (stds->data[j] == 0.0) {
+            RETURN_ON_ERROR(MATRIX_ERR_ZERO_STD_DEV, "Standard deviation cannot be zero.");
         }
     }
 
