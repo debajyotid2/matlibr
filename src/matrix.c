@@ -322,8 +322,8 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
     if (scalar == 0) {                                                                                  \
         return MATRIX_SUCCESS;                                                                          \
     }                                                                                                   \
-    int nelem = mat->nrows * mat->ncols;                                                                \
-    for (int i=0; i<nelem; ++i) {                                                                       \
+    size_t nelem = mat->nrows * mat->ncols;                                                             \
+    for (int i=0; i<(int)nelem; ++i) {                                                                  \
         mat->data[i] += (scalar);                                                                       \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
