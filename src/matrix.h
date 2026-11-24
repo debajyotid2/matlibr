@@ -137,7 +137,7 @@ MatrixStatusCode intmat_repeat(IntMatrix *repeated, const IntMatrix *vec, unsign
 MatrixStatusCode intmat_vec_add(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_vec_sub(IntMatrix *mat, const IntMatrix *vec);
 MatrixStatusCode intmat_gather(const IntMatrix *from, IntMatrix *to, const IntMatrix *indices,
-                               size_t dimension);
+                               unsigned int dimension);
 MatrixStatusCode intmat_destroy(IntMatrix *matrix);
 
 // Functions for float64 (double) matrices (for backwards compatibility)
