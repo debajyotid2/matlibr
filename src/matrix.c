@@ -465,7 +465,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
     /* Ensure correct dimensions for matrix multiplication */                                           \
     if (k != k_prime) {                                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                  \
-            "IntMatrix dimensions must satisfy k = k' for multiplying m "                               \
+            "Matrix dimensions must satisfy k = k' for multiplying m "                               \
             "x k and k' x n matrices.");                                                                \
     }                                                                                                   \
     MatrixStatusCode res = PREPARE_FUNC(result, m, n, false);                                           \
