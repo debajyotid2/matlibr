@@ -10,14 +10,16 @@
 #define TENSOR_MAX_DIMS 8
 #define TENSOR_INIT {0}
 
-#define DEFINE_TENSOR_STRUCT(STRUCT_NAME, DATA_TYPE)   \
-    typedef struct {                                   \
-        uint64_t     magic;                            \
-        size_t       ndim;                             \
-        size_t       size;                             \
-        size_t       capacity;                         \
-        unsigned int shape[TENSOR_MAX_DIMS];           \
-        DATA_TYPE*   data;                             \
+#define DEFINE_TENSOR_STRUCT(STRUCT_NAME, DATA_TYPE) \
+    typedef struct {                                 \
+        uint64_t     magic;                          \
+        size_t       ndim;                           \
+        size_t       size;                           \
+        size_t       capacity;                       \
+        unsigned int shape[TENSOR_MAX_DIMS];         \
+        size_t       strides[TENSOR_MAX_DIMS];       \
+        bool         is_view;                        \
+        DATA_TYPE   *data;                           \
     } STRUCT_NAME;
 
 DEFINE_TENSOR_STRUCT(TensorI32, int32_t)
@@ -41,13 +43,15 @@ typedef enum {
     TENSOR_ERR_ZERO_STD_DEV,
     TENSOR_ERR_INPLACE_MATMUL,
     TENSOR_ERR_UNINITIALIZED,
+    TENSOR_ERR_VIEW_TENSOR_OVERWRITE,
+    TENSOR_ERR_NON_CONTIGUOUS,
     TENSOR_ERR_UNKNOWN
 } TensorStatusCode;
 
 static inline size_t _tensor_offset(const void *data, size_t ndim, unsigned int *shape,
-                                    size_t nargs, const size_t* coords,
+                                    size_t *strides, size_t nargs, const size_t *coords,
                                     const char *func, int line, ...) {
-    if (data == NULL || shape == NULL) {
+    if (data == NULL || shape == NULL || strides == NULL) {
         fprintf(stderr, "TENSOR LIB ERROR: %s,%d: %s\n", func, line, "Null pointer received.");
         abort();
     }
@@ -65,24 +69,21 @@ static inline size_t _tensor_offset(const void *data, size_t ndim, unsigned int 
     for (int i = 0; (size_t)i < ndim; ++i) {
         int dim = coords[i];
         if (dim < 0 || (size_t)dim >= shape[i]) {
-            fprintf(stderr, "TENSOR LIB ERROR: %s,%d: Index %d out of bounds.\n", 
-                    func, line, dim);
+            fprintf(stderr, "TENSOR LIB ERROR: %s,%d: Index %d out of bounds.\n", func, line, dim);
             abort();
         }
-        offset = offset * (size_t)shape[i] + dim;
+        offset += (size_t)dim * strides[i];
     }
     return offset;
 }
 
 // Tensor elementwise access
 // NOTE: Do not call this with side-effects in place of `tensor`.
-#define TENSOR_AT(tensor, ...)                                                        \
-    (((tensor) != NULL ? (tensor)->data : NULL)[_tensor_offset(                       \
-        (tensor) != NULL? (tensor)->data: NULL,                                       \
-        (tensor) != NULL ? (tensor)->ndim : 0,                                        \
-        (tensor) != NULL ? (tensor)->shape : NULL,                                    \
-        sizeof((const size_t[]){__VA_ARGS__}) / sizeof(size_t),                       \
-        (const size_t[]){__VA_ARGS__},                                                \
+#define TENSOR_AT(tensor, ...)                                                                  \
+    (((tensor) != NULL ? (tensor)->data : NULL)[_tensor_offset(                                 \
+        (tensor) != NULL ? (tensor)->data : NULL, (tensor) != NULL ? (tensor)->ndim : 0,        \
+        (tensor) != NULL ? (tensor)->shape : NULL, (tensor) != NULL ? (tensor)->strides : NULL, \
+        sizeof((const size_t[]){__VA_ARGS__}) / sizeof(size_t), (const size_t[]){__VA_ARGS__},  \
         __func__, __LINE__)])
 
 #endif // TENSOR_TYPES_H

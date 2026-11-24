@@ -56,6 +56,41 @@ static inline bool tensor_shapes_equal(
     return true;
 }
 
+static inline void tensor_set_strides(const unsigned int* shape, 
+                                      size_t ndim, size_t* strides) {
+    if (!shape || !strides) return;
+    memset(strides, 0, TENSOR_MAX_DIMS * sizeof(size_t));
+    size_t s = 1;
+    for (size_t i = ndim; i > 0; --i) {
+        strides[i-1] = s;
+        s *= (size_t)shape[i-1];
+    }
+}
+
+static inline bool tensor_is_contiguous(const unsigned int* shape, 
+                                        const size_t* strides, size_t ndim) {
+    if (!shape || !strides || ndim == 0) return false;
+    size_t expected = 1;
+    for (size_t i = ndim; i > 0; --i) {
+        if (strides[i-1] != expected) return false;
+        expected *= (size_t)shape[i-1];
+    }
+    return true;
+}
+
+static inline size_t tensor_flat_to_strided_offset(
+    size_t t_flat_idx, const unsigned int* shape,
+    const size_t* strides, size_t ndim) {
+    size_t offset = 0;
+    for (size_t dim = ndim; dim > 0; --dim) {
+        size_t dim_size = (size_t)shape[dim-1];
+        size_t coord = t_flat_idx % dim_size;
+        t_flat_idx /= dim_size;
+        offset += coord * strides[dim-1];
+    }
+    return offset;
+}
+
 // This is strictly for internal use only
 #define DEFINE_TENSOR_VIEW_AS_MATRIX(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE)\
 static inline MATRIX_TYPE FUNC_NAME(const TENSOR_TYPE* t, size_t offset, \
@@ -84,6 +119,9 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
     if (ndim <= 0 || ndim > TENSOR_MAX_DIMS) {                                                \
         RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "Invalid 'ndim'");                      \
     }                                                                                         \
+    if (t->is_view && t->magic == TENSOR_MAGIC) {                                             \
+        RETURN_ON_ERROR(TENSOR_ERR_VIEW_TENSOR_OVERWRITE, "Cannot overwrite a view tensor."); \
+    }                                                                                         \
     size_t size = 1;                                                                          \
     for (int i = 0; (size_t)i < ndim; ++i) {                                                  \
         if (shape[i] == 0) {                                                                  \
@@ -95,19 +133,25 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
         t->data = (DATA_TYPE*)malloc(size * sizeof(DATA_TYPE));                               \
         if (!t->data) {                                                                       \
             memset(t->shape, (unsigned int)0, ndim * sizeof(unsigned int));                   \
+            memset(t->strides, (unsigned int)0, ndim * sizeof(size_t));                       \
             t->capacity = 0;                                                                  \
             t->size = 0;                                                                      \
             t->ndim = 0;                                                                      \
+            t->is_view = false;                                                               \
             RETURN_ON_ERROR(TENSOR_ERR_MEMORY_ALLOCATION, "Allocation failed.");              \
         }                                                                                     \
         t->ndim = (size_t)ndim;                                                               \
+        memset(t->shape, (unsigned int)0, ndim * sizeof(unsigned int));                       \
         memcpy(t->shape, shape, ndim * sizeof(unsigned int));                                 \
+        tensor_set_strides(t->shape, t->ndim, t->strides);                                    \
         t->size = size;                                                                       \
         t->capacity = size;                                                                   \
         t->magic = TENSOR_MAGIC;                                                              \
+        t->is_view = false;                                                                   \
         return TENSOR_SUCCESS;                                                                \
     }                                                                                         \
-    if (t->ndim == ndim && memcmp(t->shape, shape, ndim * sizeof(unsigned int)) == 0) {       \
+    if (t->ndim == ndim && memcmp(t->shape, shape, ndim * sizeof(unsigned int)) == 0 &&       \
+        tensor_is_contiguous(t->shape, t->strides, t->ndim)) {                                \
         return TENSOR_SUCCESS;                                                                \
     }                                                                                         \
     if (!allow_resize) {                                                                      \
@@ -123,8 +167,10 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
     }                                                                                         \
     memset(t->shape, 0, TENSOR_MAX_DIMS * sizeof(unsigned int));                              \
     memcpy(t->shape, shape, ndim * sizeof(unsigned int));                                     \
+    tensor_set_strides(t->shape, ndim, t->strides);                                           \
     t->ndim  = (size_t)ndim;                                                                  \
     t->size = size;                                                                           \
+    t->is_view = false;                                                                       \
     return TENSOR_SUCCESS;                                                                    \
 }
 
@@ -138,8 +184,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int ndim, const unsigned int *shape) 
     return TENSOR_SUCCESS;                                                          \
 };
 
-#define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, PREPARE_FUNC,           \
-                            MATRIX_COPY_FUNC, TENSOR_VIEW_AS_MATRIX_FUNC)               \
+#define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)\
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {                 \
     if (dest==NULL || !src || !src->data) {                                             \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                 \
@@ -154,11 +199,14 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {         
     if (ret != TENSOR_SUCCESS) {                                                        \
         return ret;                                                                     \
     }                                                                                   \
-    const MATRIX_TYPE src_mat = TENSOR_VIEW_AS_MATRIX_FUNC(src, 0, 1, src->size);       \
-    MATRIX_TYPE dest_mat = TENSOR_VIEW_AS_MATRIX_FUNC(dest, 0, 1, src->size);           \
-    MatrixStatusCode mat_ret = MATRIX_COPY_FUNC(&dest_mat, &src_mat);                   \
-    if (mat_ret != MATRIX_SUCCESS) {                                                    \
-        return tensorstatuscode_from_matrixstatuscode(mat_ret);                         \
+    if (tensor_is_contiguous(src->shape, src->strides, src->ndim)) {                    \
+        memcpy(dest->data, src->data, src->size * sizeof(DATA_TYPE));                   \
+    } else {                                                                            \
+        for (size_t i=0; i < dest->size; ++i) {                                         \
+            size_t src_offset = tensor_flat_to_strided_offset(i, src->shape,            \
+                                                        src->strides, src->ndim);       \
+            dest->data[i] = src->data[src_offset];                                      \
+        }                                                                               \
     }                                                                                   \
     return TENSOR_SUCCESS;                                                              \
 };
@@ -171,6 +219,10 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int new_ndim,                        
     }                                                                                           \
     if (t->magic != TENSOR_MAGIC) {                                                             \
         RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
+    }                                                                                           \
+    if (!tensor_is_contiguous(t->shape, t->strides, t->ndim)) {                                 \
+        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS,                                              \
+                        "Cannot reshape non-contiguous tensor inplace.");                       \
     }                                                                                           \
     if (new_ndim <= 0 || new_ndim > TENSOR_MAX_DIMS) {                                          \
         RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "Invalid 'new_ndim'.");                   \
@@ -189,6 +241,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int new_ndim,                        
     t->ndim = (size_t)new_ndim;                                                                 \
     memset(t->shape, 0, TENSOR_MAX_DIMS * sizeof(unsigned int));                                \
     memcpy(t->shape, new_shape, new_ndim * sizeof(unsigned int));                               \
+    tensor_set_strides(t->shape, t->ndim, t->strides);                                          \
     return TENSOR_SUCCESS;                                                                      \
 };
 
@@ -204,52 +257,77 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
         RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                      \
                         "Source must have the same number of elements as destination.");    \
     }                                                                                       \
-    memcpy(t->data, src, count * sizeof(DATA_TYPE));                                        \
+    if (tensor_is_contiguous(t->shape, t->strides, t->ndim)) {                              \
+        memcpy(t->data, src, count * sizeof(DATA_TYPE));                                    \
+    } else {                                                                                \
+        for (size_t i = 0; i < count; ++i) {                                                \
+            size_t offset = tensor_flat_to_strided_offset(i, t->shape, t->strides, t->ndim);\
+            t->data[offset] = src[i];                                                       \
+        }                                                                                   \
+    }                                                                                       \
     return TENSOR_SUCCESS;                                                                  \
 };
 
-#define DEFINE_TENSOR_ADD(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_ADD_FUNC,     \
-                                        TENSOR_VIEW_AS_MATRIX_FUNC)                 \
-TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                  \
-    if (!a || !b || !a->data || !b->data) {                                         \
-        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");              \
-    }                                                                               \
-    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                     \
-        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");        \
-    }                                                                               \
-    if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {               \
-        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                              \
-                        "Both tensors must be of same shape.");                     \
-    }                                                                               \
-    MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);               \
-    const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);         \
-    MatrixStatusCode ret = MATRIX_ADD_FUNC(&a_mat, &b_mat);                         \
-    if (ret != MATRIX_SUCCESS) {                                                    \
-        return tensorstatuscode_from_matrixstatuscode(ret);                         \
-    }                                                                               \
-    return TENSOR_SUCCESS;                                                          \
+#define DEFINE_TENSOR_ADD(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_ADD_FUNC,                 \
+                                        TENSOR_VIEW_AS_MATRIX_FUNC)                             \
+TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
+    if (!a || !b || !a->data || !b->data) {                                                     \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
+    }                                                                                           \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                 \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
+    }                                                                                           \
+    if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {                           \
+        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                          \
+                        "Both tensors must be of same shape.");                                 \
+    }                                                                                           \
+    if (tensor_is_contiguous(a->shape, a->strides, a->ndim) &&                                  \
+        tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                  \
+        MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);                       \
+        const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);                 \
+        MatrixStatusCode ret = MATRIX_ADD_FUNC(&a_mat, &b_mat);                                 \
+        if (ret != MATRIX_SUCCESS) {                                                            \
+            return tensorstatuscode_from_matrixstatuscode(ret);                                 \
+        }                                                                                       \
+    } else {                                                                                    \
+        for (size_t i = 0; i < a->size; ++i) {                                                  \
+            size_t offset_a = tensor_flat_to_strided_offset(i, a->shape, a->strides, a->ndim);  \
+            size_t offset_b = tensor_flat_to_strided_offset(i, b->shape, b->strides, b->ndim);  \
+            a->data[offset_a] += b->data[offset_b];                                             \
+        }                                                                                       \
+    }                                                                                           \
+    return TENSOR_SUCCESS;                                                                      \
 };
 
-#define DEFINE_TENSOR_SUB(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_SUB_FUNC,     \
-                                        TENSOR_VIEW_AS_MATRIX_FUNC)                 \
-TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                  \
-    if (!a || !b || !a->data || !b->data) {                                         \
-        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");              \
-    }                                                                               \
-    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                     \
-        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");        \
-    }                                                                               \
-    if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {               \
-        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                              \
-                        "Both tensors must be of same shape.");                     \
-    }                                                                               \
-    MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);               \
-    const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);         \
-    MatrixStatusCode ret = MATRIX_SUB_FUNC(&a_mat, &b_mat);                         \
-    if (ret != MATRIX_SUCCESS) {                                                    \
-        return tensorstatuscode_from_matrixstatuscode(ret);                         \
-    }                                                                               \
-    return TENSOR_SUCCESS;                                                          \
+#define DEFINE_TENSOR_SUB(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_SUB_FUNC,                 \
+                                        TENSOR_VIEW_AS_MATRIX_FUNC)                             \
+TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
+    if (!a || !b || !a->data || !b->data) {                                                     \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
+    }                                                                                           \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                 \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
+    }                                                                                           \
+    if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {                           \
+        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                          \
+                        "Both tensors must be of same shape.");                                 \
+    }                                                                                           \
+    if (tensor_is_contiguous(a->shape, a->strides, a->ndim) &&                                  \
+        tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                  \
+        MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);                       \
+        const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);                 \
+        MatrixStatusCode ret = MATRIX_SUB_FUNC(&a_mat, &b_mat);                                 \
+        if (ret != MATRIX_SUCCESS) {                                                            \
+            return tensorstatuscode_from_matrixstatuscode(ret);                                 \
+        }                                                                                       \
+    } else {                                                                                    \
+        for (size_t i = 0; i < a->size; ++i) {                                                  \
+            size_t offset_a = tensor_flat_to_strided_offset(i, a->shape, a->strides, a->ndim);  \
+            size_t offset_b = tensor_flat_to_strided_offset(i, b->shape, b->strides, b->ndim);  \
+            a->data[offset_a] -= b->data[offset_b];                                             \
+        }                                                                                       \
+    }                                                                                           \
+    return TENSOR_SUCCESS;                                                                      \
 };
 
 #define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, PREPARE_FUNC, MATMUL_FUNC, TENSOR_VIEW_AS_MATRIX_FUNC)      \
@@ -269,6 +347,12 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                  
     if (a->ndim != b->ndim || a->ndim < 2 || b->ndim < 2) {                                                                \
         RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                                     \
         "Shapes of A and B do not have correct number of dimensions.");                                                    \
+    }                                                                                                                      \
+    /* TODO: implement support for strided tensors */                                                                      \
+    if (!tensor_is_contiguous(a->shape, a->strides, a->ndim) ||                                                            \
+        !tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                                            \
+        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS,                                                                         \
+                        "Tensor multiplication not supported for non-contiguous tensors.");                                \
     }                                                                                                                      \
     size_t num_matmuls = 1;                                                                                                \
     for (int i = 0; (size_t)i < a->ndim - 2; ++i) {                                                                        \
@@ -324,13 +408,15 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t) {                                    
     if (t->magic != TENSOR_MAGIC) {                                                                 \
         RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized or already destroyed");   \
     }                                                                                               \
-    if (t->data != NULL) {                                                                          \
+    if (!t->is_view && t->data != NULL) {                                                           \
         free(t->data);                                                                              \
     }                                                                                               \
     t->data = NULL;                                                                                 \
     t->capacity = 0;                                                                                \
     t->magic = 0;                                                                                   \
+    t->is_view = false;                                                                             \
     memset(t->shape, (unsigned int)0, t->ndim * sizeof(unsigned int));                              \
+    memset(t->strides, (size_t)0, t->ndim * sizeof(size_t));                                        \
     t->ndim = 0;                                                                                    \
     t->size = 0;                                                                                    \
     return TENSOR_SUCCESS;                                                                          \
@@ -339,8 +425,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t) {                                    
 /**************** TensorF64 operations ***********************/
 DEFINE_TENSOR_PREPARE(tensorf64_prepare, TensorF64, double)
 DEFINE_TENSOR_CREATE(tensorf64_create, TensorF64, double, tensorf64_prepare)
-DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, MatrixF64, tensorf64_prepare, 
-                   matf64_copy, tensorf64_view_as_matrix)
+DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, MatrixF64, double, tensorf64_prepare) 
 DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
 DEFINE_TENSOR_ADD(tensorf64_add, TensorF64, MatrixF64, matf64_add, 

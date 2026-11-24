@@ -8,8 +8,8 @@ extern "C" {
 #include "matrix_types.h"
 #include "tensor_types.h"
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 TensorStatusCode tensorf64_create(TensorF64 *t, int ndim, const unsigned int *shape);
 TensorStatusCode tensorf64_copy(TensorF64 *dest, const TensorF64 *src);
