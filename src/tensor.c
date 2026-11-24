@@ -144,6 +144,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {         
     if (dest==NULL || !src || !src->data) {                                             \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                 \
     }                                                                                   \
+    if (src->magic != TENSOR_MAGIC) {                                                   \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor 'src' not initialized");      \
+    }                                                                                   \
     if (dest == src) {                                                                  \
         return TENSOR_SUCCESS;                                                          \
     }                                                                                   \
@@ -165,6 +168,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int new_ndim,                        
                             const unsigned int *new_shape) {                                    \
     if (!t || !t->data || !new_shape) {                                                         \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                         \
+    }                                                                                           \
+    if (t->magic != TENSOR_MAGIC) {                                                             \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
     }                                                                                           \
     if (new_ndim <= 0 || new_ndim > TENSOR_MAX_DIMS) {                                          \
         RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "Invalid 'new_ndim'.");                   \
@@ -191,6 +197,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
     if (!t || !t->data || !src) {                                                           \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                      \
     }                                                                                       \
+    if (t->magic != TENSOR_MAGIC) {                                                         \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                \
+    }                                                                                       \
     if (t->size != count) {                                                                 \
         RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                      \
                         "Source must have the same number of elements as destination.");    \
@@ -204,6 +213,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                  \
     if (!a || !b || !a->data || !b->data) {                                         \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");              \
+    }                                                                               \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                     \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");        \
     }                                                                               \
     if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {               \
         RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                              \
@@ -224,6 +236,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
     if (!a || !b || !a->data || !b->data) {                                         \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");              \
     }                                                                               \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                     \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");        \
+    }                                                                               \
     if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {               \
         RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                              \
                         "Both tensors must be of same shape.");                     \
@@ -243,6 +258,9 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                  
                                TENSOR_TYPE *out) {                                                                         \
     if (a==NULL || b==NULL || out==NULL || !a->data || !b->data) {                                                         \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Got null pointer.");                                                         \
+    }                                                                                                                      \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                                            \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                                               \
     }                                                                                                                      \
     if (out == a || out == b) {                                                                                            \
         RETURN_ON_ERROR(TENSOR_ERR_INPLACE_MATMUL,                                                                         \
