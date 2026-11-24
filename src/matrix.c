@@ -15,22 +15,22 @@
 */
 
 #include <cblas.h>
+#include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <inttypes.h>
 
 #include "matrix.h"
 #include "matrix_types.h"
 
 // restrict keyword for enabling compiler SIMD vectorization
 #ifdef __cplusplus
-#define MATRIX_RESTRICT __restrict
+#    define MATRIX_RESTRICT __restrict
 #else
-#define MATRIX_RESTRICT restrict
+#    define MATRIX_RESTRICT restrict
 #endif
 
 #ifdef _WIN32
@@ -322,8 +322,8 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const DATA_TYPE scalar) {          
     if (scalar == 0) {                                                                                  \
         return MATRIX_SUCCESS;                                                                          \
     }                                                                                                   \
-    int nelem = mat->nrows * mat->ncols;                                                                \
-    for (int i=0; i<nelem; ++i) {                                                                       \
+    size_t nelem = mat->nrows * mat->ncols;                                                             \
+    for (int i=0; i<(int)nelem; ++i) {                                                                  \
         mat->data[i] += (scalar);                                                                       \
     }                                                                                                   \
     return MATRIX_SUCCESS;                                                                              \
@@ -365,13 +365,16 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat_a, const MATRIX_TYPE *mat_b) {      
 // Addition is done as: A := A + B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
+#define DEFINE_MATRIX_VEC_ADD(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE, SCALAR_ADD_FUNC)            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");\
+    }                                                                                                   \
+    if (vec->nrows == 1 && vec->ncols == 1) {                                                           \
+        return SCALAR_ADD_FUNC(mat, vec->data[0]);                                                      \
     }                                                                                                   \
     /* Row vector addition */                                                                           \
     if (vec->nrows == 1) {                                                                              \
@@ -403,13 +406,16 @@ MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {          
 // Subtraction is done as: A := A - B
 // where vector B is repeated along the number
 // of dimensions as required to match A's dimensions.
-#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE)                             \
+#define DEFINE_MATRIX_VEC_SUB(FUNC_NAME, MATRIX_TYPE, AXPY_FUNC, DATA_TYPE, SCALAR_ADD_FUNC)            \
 MatrixStatusCode FUNC_NAME(MATRIX_TYPE *mat, const MATRIX_TYPE *vec) {                                  \
     if (mat==NULL || vec==NULL || !mat->data || !vec->data) {                                           \
         RETURN_ON_ERROR(MATRIX_ERR_NULL_PTR, "Got null pointer for matrix or vector.");                 \
     }                                                                                                   \
     if (vec->nrows > 1 && vec->ncols > 1) {                                                             \
         RETURN_ON_ERROR(MATRIX_ERR_INVALID_DIMENSION, "Second argument must be a row or column vector.");\
+    }                                                                                                   \
+    if (vec->nrows == 1 && vec->ncols == 1) {                                                           \
+        return SCALAR_ADD_FUNC(mat, -1 * vec->data[0]);                                                 \
     }                                                                                                   \
     /* Row vector addition */                                                                           \
     if (vec->nrows == 1) {                                                                              \
@@ -465,7 +471,7 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
     /* Ensure correct dimensions for matrix multiplication */                                           \
     if (k != k_prime) {                                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                  \
-            "IntMatrix dimensions must satisfy k = k' for multiplying m "                               \
+            "Matrix dimensions must satisfy k = k' for multiplying m "                               \
             "x k and k' x n matrices.");                                                                \
     }                                                                                                   \
     MatrixStatusCode res = PREPARE_FUNC(result, m, n, false);                                           \
@@ -778,8 +784,8 @@ DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
 DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
 DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
-DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int)
-DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy, int)
+DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int, intmat_add_scalar)
+DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy, int, intmat_add_scalar)
 DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
 DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
 DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
@@ -801,8 +807,8 @@ DEFINE_MATRIX_RANGE(mati32_range, MatrixI32, int32_t, mati32_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mati32_add_scalar, MatrixI32, int32_t)
 DEFINE_MATRIX_ADD(mati32_add, MatrixI32, i32_axpy)
 DEFINE_MATRIX_SUB(mati32_sub, MatrixI32, i32_axpy)
-DEFINE_MATRIX_VEC_ADD(mati32_vec_add, MatrixI32, i32_axpy, int32_t)
-DEFINE_MATRIX_VEC_SUB(mati32_vec_sub, MatrixI32, i32_axpy, int32_t)
+DEFINE_MATRIX_VEC_ADD(mati32_vec_add, MatrixI32, i32_axpy, int32_t, mati32_add_scalar)
+DEFINE_MATRIX_VEC_SUB(mati32_vec_sub, MatrixI32, i32_axpy, int32_t, mati32_add_scalar)
 DEFINE_MATRIX_MUL(mati32_mul, MatrixI32, int32_t, i32_gemm, mati32_prepare)
 DEFINE_MATRIX_GATHER(mati32_gather, MatrixI32, MatrixI32, i32_copy)
 DEFINE_MATRIX_DESTROY(mati32_destroy, MatrixI32)
@@ -824,8 +830,8 @@ DEFINE_MATRIX_RANGE(mati64_range, MatrixI64, int64_t, mati64_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mati64_add_scalar, MatrixI64, int64_t)
 DEFINE_MATRIX_ADD(mati64_add, MatrixI64, i64_axpy)
 DEFINE_MATRIX_SUB(mati64_sub, MatrixI64, i64_axpy)
-DEFINE_MATRIX_VEC_ADD(mati64_vec_add, MatrixI64, i64_axpy, int64_t)
-DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy, int64_t)
+DEFINE_MATRIX_VEC_ADD(mati64_vec_add, MatrixI64, i64_axpy, int64_t, mati64_add_scalar)
+DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy, int64_t, mati64_add_scalar)
 DEFINE_MATRIX_MUL(mati64_mul, MatrixI64, int64_t, i64_gemm, mati64_prepare)
 DEFINE_MATRIX_GATHER(mati64_gather, MatrixI64, MatrixI64, i64_copy)
 DEFINE_MATRIX_DESTROY(mati64_destroy, MatrixI64)
@@ -902,8 +908,8 @@ DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_prepare)
 DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
 DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
 DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy, double)
+DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double, mat_add_scalar)
+DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy, double, mat_add_scalar)
 DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
 DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
@@ -925,8 +931,8 @@ DEFINE_MATRIX_RANGE(matf32_range, MatrixF32, float, matf32_prepare)
 DEFINE_MATRIX_ADD_SCALAR(matf32_add_scalar, MatrixF32, float)
 DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
 DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
-DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float)
-DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy, float)
+DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float, matf32_add_scalar)
+DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy, float, matf32_add_scalar)
 DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
 DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_scopy)
 DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
@@ -948,8 +954,8 @@ DEFINE_MATRIX_RANGE(matf64_range, MatrixF64, double, matf64_prepare)
 DEFINE_MATRIX_ADD_SCALAR(matf64_add_scalar, MatrixF64, double)
 DEFINE_MATRIX_ADD(matf64_add, MatrixF64, cblas_daxpy)
 DEFINE_MATRIX_SUB(matf64_sub, MatrixF64, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double)
-DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy, double)
+DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double, matf64_add_scalar)
+DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy, double, matf64_add_scalar)
 DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, double_gemm_wrapper, matf64_prepare)
 DEFINE_MATRIX_GATHER(matf64_gather, MatrixF64, MatrixI32, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(matf64_destroy, MatrixF64)
