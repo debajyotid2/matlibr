@@ -114,6 +114,41 @@ TEST_CASE("TensorF64: Copy and Reshape", "[tensorf64]") {
     tensorf64_destroy(&t);
 }
 
+TEST_CASE("TensorF64: Permute", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    TensorF64          permuted = TENSOR_INIT;
+    const unsigned int shape[] = {2, 3};
+    const double       src[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double             tol = 1.0e-9;
+
+    tensorf64_create(&t, 2, shape);
+    tensorf64_set_data(&t, src, 6);
+
+    SECTION("Permute valid and self") {
+        const unsigned int permuted_dims[2] = {1, 0};
+        REQUIRE(tensorf64_permute(&t, &permuted, permuted_dims) == TENSOR_SUCCESS);
+        REQUIRE(t.data == permuted.data);
+        REQUIRE(t.size == permuted.size);
+        REQUIRE(permuted.is_view);
+        REQUIRE(tensorf64_permute(&t, &t, permuted_dims) == TENSOR_SUCCESS);
+        tensorf64_destroy(&permuted);
+    }
+
+    SECTION("Permute null pointer") {
+        const unsigned int permuted_dims[2] = {1, 0};
+        REQUIRE(tensorf64_permute(&t, NULL, permuted_dims) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_permute(NULL, &permuted, permuted_dims) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_permute(&t, &permuted, NULL) == TENSOR_ERR_NULL_PTR);
+    }
+
+    SECTION("Reshape error cases") {
+        const unsigned int mismatch_dims[] = {1, 2};
+        REQUIRE(tensorf64_permute(&t, &permuted, mismatch_dims) == TENSOR_ERR_INVALID_DIMENSION);
+    }
+
+    tensorf64_destroy(&t);
+}
+
 TEST_CASE("TensorF64: Set Data", "[tensorf64]") {
     TensorF64          t = TENSOR_INIT;
     const unsigned int shape[] = {2, 2, 3};
