@@ -116,6 +116,26 @@ TEST_CASE("TensorF64: Copy and Reshape", "[tensorf64]") {
         REQUIRE(tensorf64_reshape(NULL, 2, mismatch_shape) == TENSOR_ERR_NULL_PTR);
     }
 
+    SECTION("Copy and reshape on permuted view") {
+        TensorF64          perm = TENSOR_INIT;
+        TensorF64          expected = TENSOR_INIT;
+        const unsigned int perm_dims[] = {1, 0};
+        const unsigned int perm_shape[] = {3, 2};
+        const double       exp_data[6] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0};
+        tensorf64_permute(&t, &perm, perm_dims);
+        tensorf64_create(&expected, 2, perm_shape);
+        tensorf64_set_data(&expected, exp_data, 6);
+
+        REQUIRE(tensorf64_reshape(&perm, 2, shape) == TENSOR_ERR_NON_CONTIGUOUS);
+        REQUIRE(tensorf64_copy(&copy, &perm) == TENSOR_SUCCESS);
+        REQUIRE_FALSE(copy.is_view);
+        REQUIRE(are_f64_tensors_equal(&copy, &expected, tol));
+
+        tensorf64_destroy(&perm);
+        tensorf64_destroy(&expected);
+        tensorf64_destroy(&copy);
+    }
+
     tensorf64_destroy(&t);
 }
 
@@ -270,6 +290,19 @@ TEST_CASE("TensorF64: Set Data", "[tensorf64]") {
             REQUIRE(t.data[i] == src[i]);
     }
 
+    SECTION("Set data on permuted view") {
+        TensorF64          perm = TENSOR_INIT;
+        const unsigned int perm_dims[] = {2, 0, 1};
+        tensorf64_permute(&t, &perm, perm_dims);
+        REQUIRE(tensorf64_set_data(&perm, src, 12) == TENSOR_SUCCESS);
+        REQUIRE(TENSOR_AT(&perm, 0, 0, 0) == 1.0);
+        REQUIRE(TENSOR_AT(&perm, 1, 0, 1) == 6.0);
+        REQUIRE(TENSOR_AT(&perm, 2, 1, 1) == 12.0);
+        REQUIRE(TENSOR_AT(&t, 0, 1, 1) == 6.0);
+        REQUIRE(TENSOR_AT(&t, 1, 1, 2) == 12.0);
+        tensorf64_destroy(&perm);
+    }
+
     tensorf64_destroy(&t);
 }
 
@@ -316,6 +349,25 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
         REQUIRE(tensorf64_add(&a, NULL) == TENSOR_ERR_NULL_PTR);
         REQUIRE(tensorf64_sub(NULL, &b) == TENSOR_ERR_NULL_PTR);
         REQUIRE(tensorf64_sub(&a, NULL) == TENSOR_ERR_NULL_PTR);
+    }
+
+    SECTION("Add and Sub with permuted views") {
+        TensorF64          perm_a = TENSOR_INIT;
+        TensorF64          perm_b = TENSOR_INIT;
+        const unsigned int perm_dims[] = {2, 0, 1};
+        const double       exp_add[8] = {9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0};
+        tensorf64_permute(&a, &perm_a, perm_dims);
+        tensorf64_permute(&b, &perm_b, perm_dims);
+        tensorf64_set_data(&expected, exp_add, 8);
+
+        REQUIRE(tensorf64_add(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
+        REQUIRE(tensorf64_sub(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < 8; ++i)
+            REQUIRE_THAT(a.data[i], Catch::Matchers::WithinAbs(data_a[i], tol));
+
+        tensorf64_destroy(&perm_a);
+        tensorf64_destroy(&perm_b);
     }
 
     tensorf64_destroy(&a);
