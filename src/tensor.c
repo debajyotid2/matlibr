@@ -400,6 +400,44 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                  
     return TENSOR_SUCCESS;                                                                                                 \
 }
 
+#define DEFINE_TENSOR_PERMUTE(FUNC_NAME, TENSOR_TYPE)                                       \
+TensorStatusCode FUNC_NAME(const TENSOR_TYPE* src, TENSOR_TYPE* dest,                       \
+                            const unsigned int* dims) {                                     \
+    if (!src || !dest || !dims || !src->data) {                                             \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                     \
+    }                                                                                       \
+    if (src->magic != TENSOR_MAGIC) {                                                       \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "'src' tensor not initialized.");         \
+    }                                                                                       \
+    unsigned int seen[TENSOR_MAX_DIMS] = {0};                                               \
+    unsigned int new_shape[TENSOR_MAX_DIMS] = {0};                                          \
+    size_t new_strides[TENSOR_MAX_DIMS] = {0};                                              \
+    for (size_t i=0; i < src->ndim; ++i) {                                                  \
+        if (dims[i] >= src->ndim || seen[dims[i]]) {                                        \
+            RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "Invalid permutation dims.");     \
+        }                                                                                   \
+        seen[dims[i]] = 1;                                                                  \
+        new_shape[i] = src->shape[dims[i]];                                                 \
+        new_strides[i] = src->strides[dims[i]];                                             \
+    }                                                                                       \
+    if (dest != src) {                                                                      \
+        if (dest->magic == TENSOR_MAGIC && !dest->is_view && !dest->data) {                 \
+            fprintf(stdout,                                                                 \
+                    "WARNING: overwriting destination tensor with permutation of 'src'.");  \
+            free(dest->data);                                                               \
+        }                                                                                   \
+        dest->magic = TENSOR_MAGIC;                                                         \
+        dest->ndim = src->ndim;                                                             \
+        dest->size = src->size;                                                             \
+        dest->capacity = 0;                                                                 \
+        dest->is_view = true;                                                               \
+        dest->data = src->data;                                                             \
+    }                                                                                       \
+    memcpy(dest->shape, new_shape, sizeof(new_shape));                                      \
+    memcpy(dest->strides, new_strides, sizeof(new_strides));                                \
+    return TENSOR_SUCCESS;                                                                  \
+}
+
 #define DEFINE_TENSOR_DESTROY(FUNC_NAME, TENSOR_TYPE)                                               \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *t) {                                                        \
     if (!t || !t->data) {                                                                           \
@@ -434,4 +472,5 @@ DEFINE_TENSOR_SUB(tensorf64_sub, TensorF64, MatrixF64, matf64_sub,
                     tensorf64_view_as_matrix)
 DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, MatrixF64, tensorf64_prepare,
                   matf64_mul, tensorf64_view_as_matrix)
+DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)
