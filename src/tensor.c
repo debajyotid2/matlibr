@@ -438,6 +438,71 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE* src, TENSOR_TYPE* dest,           
     return TENSOR_SUCCESS;                                                                  \
 }
 
+#define DEFINE_TENSOR_GATHER(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, PREPARE_FUNC)                   \
+TensorStatusCode FUNC_NAME(const TENSOR_TYPE* from, TENSOR_TYPE* to,                            \
+                            const MatrixI32* idxs, unsigned int dim) {                          \
+    if (!from || !to || !idxs || !from->data) {                                                 \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                         \
+    }                                                                                           \
+    if (from->magic != TENSOR_MAGIC) {                                                          \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor 'from' not initialized.");            \
+    }                                                                                           \
+    if (from == to) {                                                                           \
+        RETURN_ON_ERROR(TENSOR_ERR_INPLACE_GATHER, "Inplace gather operation unsupported.");    \
+    }                                                                                           \
+    if (dim >= from->ndim) {                                                                    \
+        RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION,                                           \
+                        "Dimension must be within 'from' tensor's number of dimensions.");      \
+    }                                                                                           \
+    if (idxs->ncols != 1 || idxs->nrows == 0) {                                                 \
+        RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "'idxs' must be a column vector.");       \
+    }                                                                                           \
+    for (size_t k = 0; k < idxs->nrows; ++k) {                                                  \
+        if (idxs->data[k] < 0 || (unsigned int)idxs->data[k] >= from->shape[dim]) {             \
+            RETURN_ON_ERROR(TENSOR_ERR_INDEX_OUT_OF_BOUNDS, "Gather index out of bounds.");     \
+        }                                                                                       \
+    }                                                                                           \
+    unsigned int out_shape[TENSOR_MAX_DIMS] = {0};                                              \
+    memcpy(out_shape, from->shape, from->ndim * sizeof(unsigned int));                          \
+    out_shape[dim] = (unsigned int)idxs->nrows;                                                 \
+                                                                                                \
+    TensorStatusCode ret = PREPARE_FUNC(to, (int)from->ndim, out_shape, true);                  \
+    if (ret != TENSOR_SUCCESS) {                                                                \
+        return ret;                                                                             \
+    }                                                                                           \
+    if (tensor_is_contiguous(from->shape, from->strides, from->ndim)) {                         \
+        size_t outer = 1, inner = 1;                                                            \
+        for (size_t i = 0; i < dim; ++i) {                                                      \
+            outer *= (size_t)from->shape[i];                                                    \
+        }                                                                                       \
+        for (size_t i = dim+1; i < from->ndim; ++i) {                                           \
+            inner *= (size_t)from->shape[i];                                                    \
+        }                                                                                       \
+        size_t from_dim_size = (size_t)from->shape[dim];                                        \
+        size_t to_dim_size = idxs->nrows;                                                       \
+        for (size_t i = 0; i < outer; ++i) {                                                    \
+            for (size_t k = 0; k < to_dim_size; ++k) {                                          \
+                memcpy(to->data + (i * to_dim_size + k) * inner,                                \
+                       from->data + (i * from_dim_size + (size_t)idxs->data[k]) * inner,        \
+                       inner * sizeof(DATA_TYPE));                                              \
+            }                                                                                   \
+        }                                                                                       \
+    } else {                                                                                    \
+        for (size_t i = 0; i < to->size; ++i) {                                                 \
+            size_t remaining = i;                                                               \
+            size_t src_offset = 0;                                                              \
+            for (size_t j = to->ndim; j > 0; --j) {                                             \
+                size_t coord = remaining % (size_t)to->shape[j-1];                              \
+                remaining /= (size_t)to->shape[j-1];                                            \
+                size_t src_coord = (j-1 == (size_t)dim) ? (size_t)idxs->data[coord]: coord;     \
+                src_offset += src_coord * from->strides[j-1];                                   \
+            }                                                                                   \
+            to->data[i] = from->data[src_offset];                                               \
+        }                                                                                       \
+    }                                                                                           \
+    return TENSOR_SUCCESS;                                                                      \
+}
+
 #define DEFINE_TENSOR_DESTROY(FUNC_NAME, TENSOR_TYPE)                                               \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *t) {                                                        \
     if (!t || !t->data) {                                                                           \
@@ -473,4 +538,5 @@ DEFINE_TENSOR_SUB(tensorf64_sub, TensorF64, MatrixF64, matf64_sub,
 DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, MatrixF64, tensorf64_prepare,
                   matf64_mul, tensorf64_view_as_matrix)
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
+DEFINE_TENSOR_GATHER(tensorf64_gather, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)

@@ -20,6 +20,8 @@ TensorStatusCode tensorf64_sub(TensorF64 *a, const TensorF64 *b);
 TensorStatusCode tensorf64_mul(const TensorF64 *a, bool trans_a, const TensorF64 *b, bool trans_b,
                                TensorF64 *out);
 TensorStatusCode tensorf64_permute(const TensorF64* src, TensorF64* dest, const unsigned int* dims);
+TensorStatusCode tensorf64_gather(const TensorF64* from, TensorF64* to, 
+                                const MatrixI32* idxs, unsigned int dim);
 TensorStatusCode tensorf64_destroy(TensorF64 *t);
 
 #ifdef __cplusplus

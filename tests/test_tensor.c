@@ -1,10 +1,12 @@
 #include "tensor.h"
+#include "matrix.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 // Helper Functions for Testing
 
@@ -12,13 +14,16 @@
 bool are_f64_tensors_equal(const TensorF64 *a, const TensorF64 *b, double epsilon) {
     if (a == NULL || b == NULL)
         return false;
-    if (a->ndim != b->ndim)
+    if (a->ndim != b->ndim) {
         return false;
-    if (memcmp(a->shape, b->shape, a->ndim * sizeof(unsigned int)) != 0)
+    }
+    if (memcmp(a->shape, b->shape, a->ndim * sizeof(unsigned int)) != 0) {
         return false;
+    }
     for (size_t i = 0; i < a->size; ++i) {
-        if (fabs(a->data[i] - b->data[i]) > epsilon)
+        if (fabs(a->data[i] - b->data[i]) > epsilon) {
             return false;
+        }
     }
     return true;
 }
@@ -144,6 +149,41 @@ TEST_CASE("TensorF64: Permute", "[tensorf64]") {
     SECTION("Reshape error cases") {
         const unsigned int mismatch_dims[] = {1, 2};
         REQUIRE(tensorf64_permute(&t, &permuted, mismatch_dims) == TENSOR_ERR_INVALID_DIMENSION);
+    }
+
+    tensorf64_destroy(&t);
+}
+
+TEST_CASE("TensorF64: Gather", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    TensorF64          permuted = TENSOR_INIT;
+    const unsigned int shape[] = {6, 2};
+    const double       src[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 
+                                 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+    double             tol = 1.0e-9;
+
+    tensorf64_create(&t, 2, shape);
+    tensorf64_set_data(&t, src, 12);
+
+    SECTION("Gather valid") {
+        MatrixI32 idxs = MATRIX_INIT;
+        mati32_create(&idxs, 3, 1);
+        mati32_set_data(&idxs, (const int32_t []){0, 2, 5}, 3);
+
+        TensorF64 out = TENSOR_INIT;
+
+        TensorF64 res = TENSOR_INIT;
+        tensorf64_create(&res, 2, (const unsigned int []){3, 2});
+        tensorf64_set_data(&res, (const double[]){1.0, 2.0, 5.0, 6.0, 11.0, 12.0}, 6);
+
+        REQUIRE(tensorf64_gather(&t, &out, (const MatrixI32*)&idxs, 0) == TENSOR_SUCCESS);
+        REQUIRE(out.shape[0] == 3);
+        REQUIRE(out.shape[1] == 2);
+        REQUIRE(are_f64_tensors_equal(&res, &out, tol));
+        
+        mati32_destroy(&idxs);
+        tensorf64_destroy(&out);
+        tensorf64_destroy(&res);
     }
 
     tensorf64_destroy(&t);
