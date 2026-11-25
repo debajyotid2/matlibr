@@ -155,38 +155,81 @@ TEST_CASE("TensorF64: Permute", "[tensorf64]") {
 }
 
 TEST_CASE("TensorF64: Gather", "[tensorf64]") {
-    TensorF64          t = TENSOR_INIT;
-    TensorF64          permuted = TENSOR_INIT;
-    const unsigned int shape[] = {6, 2};
-    const double       src[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 
-                                 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+    TensorF64          from = TENSOR_INIT;
+    TensorF64          to = TENSOR_INIT;
+    TensorF64          expected = TENSOR_INIT;
+    MatrixI32          idxs = MATRIX_INIT;
+    const unsigned int shape[] = {2, 3, 2};
+    const double       src_data[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+                                       7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
     double             tol = 1.0e-9;
 
-    tensorf64_create(&t, 2, shape);
-    tensorf64_set_data(&t, src, 12);
+    tensorf64_create(&from, 3, shape);
+    tensorf64_set_data(&from, src_data, 12);
 
-    SECTION("Gather valid") {
-        MatrixI32 idxs = MATRIX_INIT;
-        mati32_create(&idxs, 3, 1);
-        mati32_set_data(&idxs, (const int32_t []){0, 2, 5}, 3);
+    SECTION("Gather along middle axis with repeated and reordered indices") {
+        const unsigned int exp_shape[] = {2, 4, 2};
+        const double       exp_data[16] = {5.0, 6.0, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0,
+                                           11.0, 12.0, 7.0, 8.0, 11.0, 12.0, 9.0, 10.0};
+        mati32_create(&idxs, 4, 1);
+        idxs.data[0] = 2;
+        idxs.data[1] = 0;
+        idxs.data[2] = 2;
+        idxs.data[3] = 1;
 
-        TensorF64 out = TENSOR_INIT;
+        tensorf64_create(&expected, 3, exp_shape);
+        tensorf64_set_data(&expected, exp_data, 16);
 
-        TensorF64 res = TENSOR_INIT;
-        tensorf64_create(&res, 2, (const unsigned int []){3, 2});
-        tensorf64_set_data(&res, (const double[]){1.0, 2.0, 5.0, 6.0, 11.0, 12.0}, 6);
-
-        REQUIRE(tensorf64_gather(&t, &out, (const MatrixI32*)&idxs, 0) == TENSOR_SUCCESS);
-        REQUIRE(out.shape[0] == 3);
-        REQUIRE(out.shape[1] == 2);
-        REQUIRE(are_f64_tensors_equal(&res, &out, tol));
-        
-        mati32_destroy(&idxs);
-        tensorf64_destroy(&out);
-        tensorf64_destroy(&res);
+        REQUIRE(tensorf64_gather(&from, &to, &idxs, 1) == TENSOR_SUCCESS);
+        REQUIRE(are_f64_tensors_equal(&to, &expected, tol));
     }
 
-    tensorf64_destroy(&t);
+    SECTION("Gather from permuted non-contiguous view") {
+        TensorF64          perm = TENSOR_INIT;
+        const unsigned int perm_dims[] = {2, 0, 1};
+        const unsigned int exp_shape[] = {2, 2, 2};
+        const double       exp_data[8] = {5.0, 1.0, 11.0, 7.0, 6.0, 2.0, 12.0, 8.0};
+
+        tensorf64_permute(&from, &perm, perm_dims);
+        mati32_create(&idxs, 2, 1);
+        idxs.data[0] = 2;
+        idxs.data[1] = 0;
+
+        tensorf64_create(&expected, 3, exp_shape);
+        tensorf64_set_data(&expected, exp_data, 8);
+
+        REQUIRE(tensorf64_gather(&perm, &to, &idxs, 2) == TENSOR_SUCCESS);
+        REQUIRE(are_f64_tensors_equal(&to, &expected, tol));
+        tensorf64_destroy(&perm);
+    }
+
+    SECTION("Gather index out of bounds and invalid dimension") {
+        mati32_create(&idxs, 2, 1);
+        idxs.data[0] = 0;
+        idxs.data[1] = 3;
+        REQUIRE(tensorf64_gather(&from, &to, &idxs, 1) == TENSOR_ERR_INDEX_OUT_OF_BOUNDS);
+
+        idxs.data[1] = -1;
+        REQUIRE(tensorf64_gather(&from, &to, &idxs, 1) == TENSOR_ERR_INDEX_OUT_OF_BOUNDS);
+
+        idxs.data[1] = 1;
+        REQUIRE(tensorf64_gather(&from, &to, &idxs, 3) == TENSOR_ERR_INVALID_DIMENSION);
+    }
+
+    SECTION("Gather null pointer and in-place errors") {
+        mati32_create(&idxs, 1, 1);
+        idxs.data[0] = 0;
+
+        REQUIRE(tensorf64_gather(NULL, &to, &idxs, 0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_gather(&from, NULL, &idxs, 0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_gather(&from, &to, NULL, 0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_gather(&from, &from, &idxs, 0) == TENSOR_ERR_INPLACE_GATHER);
+    }
+
+    tensorf64_destroy(&from);
+    tensorf64_destroy(&to);
+    tensorf64_destroy(&expected);
+    mati32_destroy(&idxs);
 }
 
 TEST_CASE("TensorF64: Set Data", "[tensorf64]") {
