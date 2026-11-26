@@ -152,7 +152,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int ndim, const unsigned int *shape) 
     return TENSOR_SUCCESS;                                                          \
 };
 
-#define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, DATA_TYPE, PREPARE_FUNC)\
+#define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, PREPARE_FUNC)             \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {                 \
     if (dest==NULL || !src || !src->data) {                                             \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                 \
@@ -487,7 +487,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t) {                                    
 /**************** TensorF64 operations ***********************/
 DEFINE_TENSOR_PREPARE(tensorf64_prepare, TensorF64, double)
 DEFINE_TENSOR_CREATE(tensorf64_create, TensorF64, double, tensorf64_prepare)
-DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, MatrixF64, double, tensorf64_prepare) 
+DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, double, tensorf64_prepare) 
 DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_add, TensorF64, double, cblas_daxpy, +=, 1.0)
