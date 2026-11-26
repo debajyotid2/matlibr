@@ -161,8 +161,9 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {         
     if (src->magic != TENSOR_MAGIC) {                                                   \
         RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor 'src' not initialized");      \
     }                                                                                   \
-    if (dest == src) {                                                                  \
-        return TENSOR_SUCCESS;                                                          \
+    if (dest->magic == TENSOR_MAGIC && dest->data == src->data) {                       \
+        RETURN_ON_ERROR(TENSOR_ERR_VIEW_TENSOR_OVERWRITE,                               \
+                        "Tensor 'dest' is a view of 'src'");                            \
     }                                                                                   \
     TensorStatusCode ret = PREPARE_FUNC(dest, src->ndim, src->shape, true);             \
     if (ret != TENSOR_SUCCESS) {                                                        \
