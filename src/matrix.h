@@ -22,7 +22,6 @@
 extern "C" {
 #endif
 
-#include "blas_helpers.h"
 #include "matrix_types.h"
 #include <stdbool.h>
 
