@@ -471,14 +471,14 @@ MatrixStatusCode FUNC_NAME(const MATRIX_TYPE *mat_a, bool transpose_a,          
     /* Ensure correct dimensions for matrix multiplication */                                           \
     if (k != k_prime) {                                                                                 \
         RETURN_ON_ERROR(MATRIX_ERR_DIMENSION_MISMATCH,                                                  \
-            "Matrix dimensions must satisfy k = k' for multiplying m "                               \
+            "Matrix dimensions must satisfy k = k' for multiplying m "                                  \
             "x k and k' x n matrices.");                                                                \
     }                                                                                                   \
     MatrixStatusCode res = PREPARE_FUNC(result, m, n, false);                                           \
     if (res != MATRIX_SUCCESS) {                                                                        \
         return res;                                                                                     \
     }                                                                                                   \
-    GEMM_FUNC(trans_a, trans_b, m, n, k, alpha, mat_a->data, mat_a->ncols, mat_b->data,                 \
+    GEMM_FUNC(CblasRowMajor, trans_a, trans_b, m, n, k, alpha, mat_a->data, mat_a->ncols, mat_b->data,  \
               mat_b->ncols, beta, result->data, n);                                                     \
     return MATRIX_SUCCESS;                                                                              \
 }
@@ -677,7 +677,7 @@ DEFINE_MATRIX_ADD(matf32_add, MatrixF32, cblas_saxpy)
 DEFINE_MATRIX_SUB(matf32_sub, MatrixF32, cblas_saxpy)
 DEFINE_MATRIX_VEC_ADD(matf32_vec_add, MatrixF32, cblas_saxpy, float, matf32_add_scalar)
 DEFINE_MATRIX_VEC_SUB(matf32_vec_sub, MatrixF32, cblas_saxpy, float, matf32_add_scalar)
-DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, float_gemm_wrapper, matf32_prepare)
+DEFINE_MATRIX_MUL(matf32_mul, MatrixF32, float, cblas_sgemm, matf32_prepare)
 DEFINE_MATRIX_GATHER(matf32_gather, MatrixF32, MatrixI32, cblas_scopy)
 DEFINE_MATRIX_DESTROY(matf32_destroy, MatrixF32)
 
@@ -700,7 +700,7 @@ DEFINE_MATRIX_ADD(matf64_add, MatrixF64, cblas_daxpy)
 DEFINE_MATRIX_SUB(matf64_sub, MatrixF64, cblas_daxpy)
 DEFINE_MATRIX_VEC_ADD(matf64_vec_add, MatrixF64, cblas_daxpy, double, matf64_add_scalar)
 DEFINE_MATRIX_VEC_SUB(matf64_vec_sub, MatrixF64, cblas_daxpy, double, matf64_add_scalar)
-DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, double_gemm_wrapper, matf64_prepare)
+DEFINE_MATRIX_MUL(matf64_mul, MatrixF64, double, cblas_dgemm, matf64_prepare)
 DEFINE_MATRIX_GATHER(matf64_gather, MatrixF64, MatrixI32, cblas_dcopy)
 DEFINE_MATRIX_DESTROY(matf64_destroy, MatrixF64)
 

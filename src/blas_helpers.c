@@ -62,12 +62,15 @@
 // /docs/onemkl/developer-reference-c/2023-1/cblas-gemm
 // -001.html#GUID-97718E5C-6E0A-44F0-B2B1-A551F0F164B2")
 #define DEFINE_GEMM(FUNC_NAME, DATA_TYPE)                                                      \
-    void FUNC_NAME(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,                 \
+    void FUNC_NAME(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transa,                      \
+                   const CBLAS_TRANSPOSE transb,                                               \
                    const unsigned int m, const unsigned int n, const unsigned int k,           \
                    const DATA_TYPE alpha, const DATA_TYPE *MATRIX_RESTRICT a,                  \
                    const unsigned int lda, const DATA_TYPE *MATRIX_RESTRICT b,                 \
                    const unsigned int ldb, const DATA_TYPE beta, DATA_TYPE *MATRIX_RESTRICT c, \
                    const unsigned int ldc) {                                                   \
+        /* 'order' is unused and included only for compatibility. Only row-major data */       \
+        /* buffers are supported.                                                     */       \
         unsigned int min_lda, min_ldb, min_ldc;                                                \
         bool         a_is_transposed = (transa == CblasTrans);                                 \
         bool         b_is_transposed = (transb == CblasTrans);                                 \
@@ -156,24 +159,6 @@ void dusga(const size_t num_elem, const double *y, const unsigned int incy, doub
     for (size_t i = 0; i < num_elem; i++) {
         x[i] = y[idxs[i * incy]];
     }
-}
-
-// Wrapper function for cblas_dgemm
-void double_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
-                         const unsigned int m, const unsigned int n, const unsigned int k,
-                         const double alpha, const double *a, const unsigned int lda,
-                         const double *b, const unsigned int ldb, const double beta, double *c,
-                         const unsigned int ldc) {
-    cblas_dgemm(CblasRowMajor, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-// Wrapper function for cblas_sgemm
-void float_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE transb,
-                        const unsigned int m, const unsigned int n, const unsigned int k,
-                        const float alpha, const float *a, const unsigned int lda, const float *b,
-                        const unsigned int ldb, const float beta, float *c,
-                        const unsigned int ldc) {
-    cblas_sgemm(CblasRowMajor, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
 DEFINE_AXPY(i32_axpy, int32_t)
