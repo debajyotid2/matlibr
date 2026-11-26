@@ -8,8 +8,8 @@ extern "C" {
 #include "matrix_types.h"
 #include "tensor_types.h"
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 TensorStatusCode tensorf64_create(TensorF64 *t, int ndim, const unsigned int *shape);
 TensorStatusCode tensorf64_copy(TensorF64 *dest, const TensorF64 *src);
@@ -19,6 +19,9 @@ TensorStatusCode tensorf64_add(TensorF64 *a, const TensorF64 *b);
 TensorStatusCode tensorf64_sub(TensorF64 *a, const TensorF64 *b);
 TensorStatusCode tensorf64_mul(const TensorF64 *a, bool trans_a, const TensorF64 *b, bool trans_b,
                                TensorF64 *out);
+TensorStatusCode tensorf64_permute(const TensorF64 *src, TensorF64 *dest, const unsigned int *dims);
+TensorStatusCode tensorf64_gather(const TensorF64 *from, TensorF64 *to, const MatrixI32 *idxs,
+                                  unsigned int dim);
 TensorStatusCode tensorf64_destroy(TensorF64 *t);
 
 #ifdef __cplusplus
