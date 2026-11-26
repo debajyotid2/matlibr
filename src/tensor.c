@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MATRIX_MAGIC 0xFEAB1365FEDC2937ULL // Keep this value updated with `matrix.c`
 #define TENSOR_MAGIC 0xF633DEF2AB795EC1ULL
 
 // Function for displaying and handling errors
@@ -27,24 +26,6 @@ error_handler(__func__, __LINE__, status_code, msg)
         HANDLE_ERROR(status_code, msg);                 \
         return (status_code);                           \
     } while (0)
-
-static inline TensorStatusCode tensorstatuscode_from_matrixstatuscode(MatrixStatusCode code) {
-    switch (code) { 
-        case MATRIX_SUCCESS: return TENSOR_SUCCESS;
-        case MATRIX_ERR_NULL_PTR: return TENSOR_ERR_NULL_PTR;
-        case MATRIX_ERR_MEMORY_ALLOCATION: return TENSOR_ERR_MEMORY_ALLOCATION;
-        case MATRIX_ERR_DIMENSION_MISMATCH: return TENSOR_ERR_DIMENSION_MISMATCH;
-        case MATRIX_ERR_INVALID_DIMENSION: return TENSOR_ERR_INVALID_DIMENSION;
-        case MATRIX_ERR_RANGE_INVALID: return TENSOR_ERR_RANGE_INVALID;
-        case MATRIX_ERR_RANGE_INVALID_STEP: return TENSOR_ERR_RANGE_INVALID_STEP;
-        case MATRIX_ERR_INDEX_OUT_OF_BOUNDS: return TENSOR_ERR_INDEX_OUT_OF_BOUNDS;
-        case MATRIX_ERR_TOO_MANY_INTS_TO_GENERATE: return TENSOR_ERR_TOO_MANY_INTS_TO_GENERATE;
-        case MATRIX_ERR_ZERO_STD_DEV: return TENSOR_ERR_ZERO_STD_DEV;
-        case MATRIX_ERR_INPLACE_MATMUL: return TENSOR_ERR_INPLACE_MATMUL;
-        case MATRIX_ERR_UNINITIALIZED: return TENSOR_ERR_UNINITIALIZED;
-        default: return TENSOR_ERR_UNKNOWN;
-    }
-}
 
 static inline bool tensor_shapes_equal(
     const unsigned int* shape_a, const unsigned int* shape_b, 
@@ -90,23 +71,6 @@ static inline size_t tensor_flat_to_strided_offset(
     }
     return offset;
 }
-
-// This is strictly for internal use only
-#define DEFINE_TENSOR_VIEW_AS_MATRIX(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE)\
-static inline MATRIX_TYPE FUNC_NAME(const TENSOR_TYPE* t, size_t offset, \
-                unsigned int nrows, unsigned int ncols) {                \
-    if (!t || !t->ndim) return (MATRIX_TYPE)MATRIX_INIT;                 \
-    return (MATRIX_TYPE){                                                \
-            .magic = MATRIX_MAGIC,                                       \
-            .nrows = (size_t)nrows,                                      \
-            .ncols = (size_t)ncols,                                      \
-            .data = t->data + offset,                                    \
-            .capacity = (size_t)nrows * (size_t)ncols,                   \
-    };                                                                   \
-}
-
-DEFINE_TENSOR_VIEW_AS_MATRIX(tensorf64_view_as_matrix, TensorF64, MatrixF64)
-#undef DEFINE_TENSOR_VIEW_AS_MATRIX
 
 // Internal use function: check if a tensor is already initialized with memory.
 // If not, allocate memory and initialize it.
