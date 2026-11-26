@@ -57,6 +57,7 @@ static inline bool tensor_is_contiguous(const unsigned int* shape,
     if (!shape || !strides || ndim == 0) return false;
     size_t expected = 1;
     for (size_t i = ndim; i > 0; --i) {
+        if (shape[i - 1] == 1) continue;
         if (strides[i-1] != expected) return false;
         expected *= (size_t)shape[i-1];
     }
@@ -154,7 +155,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int ndim, const unsigned int *shape) 
 
 #define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, PREPARE_FUNC)             \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {                 \
-    if (dest==NULL || !src || !src->data) {                                             \
+    if (dest==NULL || !src || !src->data) {                                             \             
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                 \
     }                                                                                   \
     if (src->magic != TENSOR_MAGIC) {                                                   \
