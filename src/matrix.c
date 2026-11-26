@@ -752,11 +752,6 @@ void float_gemm_wrapper(const CBLAS_TRANSPOSE transa, const CBLAS_TRANSPOSE tran
                 c, ldc);
 }
 
-DEFINE_AXPY(iaxpy, int)
-DEFINE_COPY(icopy, int)
-DEFINE_SCAL(iscal, int)
-DEFINE_GEMM(igemm, int)
-
 DEFINE_AXPY(i32_axpy, int32_t)
 DEFINE_COPY(i32_copy, int32_t)
 DEFINE_SCAL(i32_scal, int32_t)
