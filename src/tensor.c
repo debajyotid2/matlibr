@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "tensor.h"
 #include "matrix_types.h"
 #include "tensor_types.h"
@@ -376,7 +380,7 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE* src, TENSOR_TYPE* dest,           
         new_strides[i] = src->strides[dims[i]];                                             \
     }                                                                                       \
     if (dest != src) {                                                                      \
-        if (dest->magic == TENSOR_MAGIC && !dest->is_view && !dest->data) {                 \
+        if (dest->magic == TENSOR_MAGIC && !dest->is_view && dest->data) {                 \
             fprintf(stdout,                                                                 \
                     "WARNING: overwriting destination tensor with permutation of 'src'.");  \
             free(dest->data);                                                               \
@@ -492,3 +496,7 @@ DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dge
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
 DEFINE_TENSOR_GATHER(tensorf64_gather, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)
+
+#ifdef __cplusplus
+}
+#endif
