@@ -87,7 +87,7 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
     if (ndim <= 0 || ndim > TENSOR_MAX_DIMS) {                                                \
         RETURN_ON_ERROR(TENSOR_ERR_INVALID_DIMENSION, "Invalid 'ndim'");                      \
     }                                                                                         \
-    if (t->is_view && t->magic == TENSOR_MAGIC) {                                             \
+    if (t->magic == TENSOR_MAGIC && t->is_view) {                                             \
         RETURN_ON_ERROR(TENSOR_ERR_VIEW_TENSOR_OVERWRITE, "Cannot overwrite a view tensor."); \
     }                                                                                         \
     size_t size = 1;                                                                          \
@@ -272,7 +272,7 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                  
     if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                                   \
         RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Input tensor not initialized");                                \
     }                                                                                                             \
-    if (out == a || out == b) {                                                                                   \
+    if (out->data == a->data || out->data == b->data) {                                                           \
         RETURN_ON_ERROR(TENSOR_ERR_INPLACE_MATMUL,                                                                \
                 "Inplace tensor multiplication not supported.");                                                  \
     }                                                                                                             \
