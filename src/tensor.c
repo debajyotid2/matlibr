@@ -3,6 +3,7 @@
 #include "matrix_types.h"
 #include "tensor_types.h"
 
+#include <cblas.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -268,8 +269,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
     return TENSOR_SUCCESS;                                                                  \
 };
 
-#define DEFINE_TENSOR_ADD(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_ADD_FUNC,                 \
-                                        TENSOR_VIEW_AS_MATRIX_FUNC)                             \
+#define DEFINE_TENSOR_ELEMWISE_OP(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, AXPY_FUNC, OP, ALPHA)      \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
     if (!a || !b || !a->data || !b->data) {                                                     \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
@@ -283,52 +283,18 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
     }                                                                                           \
     if (tensor_is_contiguous(a->shape, a->strides, a->ndim) &&                                  \
         tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                  \
-        MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);                       \
-        const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);                 \
-        MatrixStatusCode ret = MATRIX_ADD_FUNC(&a_mat, &b_mat);                                 \
-        if (ret != MATRIX_SUCCESS) {                                                            \
-            return tensorstatuscode_from_matrixstatuscode(ret);                                 \
-        }                                                                                       \
+        AXPY_FUNC(a->size, (DATA_TYPE)(ALPHA), b->data, 1, a->data, 1);                         \
     } else {                                                                                    \
         for (size_t i = 0; i < a->size; ++i) {                                                  \
             size_t offset_a = tensor_flat_to_strided_offset(i, a->shape, a->strides, a->ndim);  \
             size_t offset_b = tensor_flat_to_strided_offset(i, b->shape, b->strides, b->ndim);  \
-            a->data[offset_a] += b->data[offset_b];                                             \
+            a->data[offset_a] OP b->data[offset_b];                                             \
         }                                                                                       \
     }                                                                                           \
     return TENSOR_SUCCESS;                                                                      \
 };
 
-#define DEFINE_TENSOR_SUB(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, MATRIX_SUB_FUNC,                 \
-                                        TENSOR_VIEW_AS_MATRIX_FUNC)                             \
-TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
-    if (!a || !b || !a->data || !b->data) {                                                     \
-        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
-    }                                                                                           \
-    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                 \
-        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
-    }                                                                                           \
-    if (!tensor_shapes_equal(a->shape, b->shape, a->ndim, b->ndim)) {                           \
-        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                          \
-                        "Both tensors must be of same shape.");                                 \
-    }                                                                                           \
-    if (tensor_is_contiguous(a->shape, a->strides, a->ndim) &&                                  \
-        tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                  \
-        MATRIX_TYPE a_mat = TENSOR_VIEW_AS_MATRIX_FUNC(a, 0, 1, a->size);                       \
-        const MATRIX_TYPE b_mat = TENSOR_VIEW_AS_MATRIX_FUNC(b, 0, 1, b->size);                 \
-        MatrixStatusCode ret = MATRIX_SUB_FUNC(&a_mat, &b_mat);                                 \
-        if (ret != MATRIX_SUCCESS) {                                                            \
-            return tensorstatuscode_from_matrixstatuscode(ret);                                 \
-        }                                                                                       \
-    } else {                                                                                    \
-        for (size_t i = 0; i < a->size; ++i) {                                                  \
-            size_t offset_a = tensor_flat_to_strided_offset(i, a->shape, a->strides, a->ndim);  \
-            size_t offset_b = tensor_flat_to_strided_offset(i, b->shape, b->strides, b->ndim);  \
-            a->data[offset_a] -= b->data[offset_b];                                             \
-        }                                                                                       \
-    }                                                                                           \
-    return TENSOR_SUCCESS;                                                                      \
-};
+
 
 #define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, PREPARE_FUNC, MATMUL_FUNC, TENSOR_VIEW_AS_MATRIX_FUNC)      \
 TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                                                             \
@@ -531,10 +497,8 @@ DEFINE_TENSOR_CREATE(tensorf64_create, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, MatrixF64, double, tensorf64_prepare) 
 DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
-DEFINE_TENSOR_ADD(tensorf64_add, TensorF64, MatrixF64, matf64_add, 
-                    tensorf64_view_as_matrix)
-DEFINE_TENSOR_SUB(tensorf64_sub, TensorF64, MatrixF64, matf64_sub, 
-                    tensorf64_view_as_matrix)
+DEFINE_TENSOR_ELEMWISE_OP(tensorf64_add, TensorF64, double, cblas_daxpy, +=, 1.0)
+DEFINE_TENSOR_ELEMWISE_OP(tensorf64_sub, TensorF64, double, cblas_daxpy, -=, -1.0)
 DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, MatrixF64, tensorf64_prepare,
                   matf64_mul, tensorf64_view_as_matrix)
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)

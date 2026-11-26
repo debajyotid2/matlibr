@@ -61,76 +61,75 @@
 // (e.g. "https://www.intel.com/content/www/us/en
 // /docs/onemkl/developer-reference-c/2023-1/cblas-gemm
 // -001.html#GUID-97718E5C-6E0A-44F0-B2B1-A551F0F164B2")
-#define DEFINE_GEMM(FUNC_NAME, DATA_TYPE)                                                      \
-    void FUNC_NAME(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transa,                      \
-                   const CBLAS_TRANSPOSE transb,                                               \
-                   const unsigned int m, const unsigned int n, const unsigned int k,           \
-                   const DATA_TYPE alpha, const DATA_TYPE *MATRIX_RESTRICT a,                  \
-                   const unsigned int lda, const DATA_TYPE *MATRIX_RESTRICT b,                 \
-                   const unsigned int ldb, const DATA_TYPE beta, DATA_TYPE *MATRIX_RESTRICT c, \
-                   const unsigned int ldc) {                                                   \
-        /* 'order' is unused and included only for compatibility. Only row-major data */       \
-        /* buffers are supported.                                                     */       \
-        unsigned int min_lda, min_ldb, min_ldc;                                                \
-        bool         a_is_transposed = (transa == CblasTrans);                                 \
-        bool         b_is_transposed = (transb == CblasTrans);                                 \
-                                                                                               \
-        if (a == NULL || b == NULL || c == NULL) {                                             \
-            fprintf(stderr, "ERROR! One of the matrices is a null pointer.");                  \
-            return;                                                                            \
-        }                                                                                      \
-        if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||                        \
-            (transb == CblasConjTrans || transb == CblasConjNoTrans)) {                        \
-            fprintf(stderr, "ERROR! Conjugate transpose is not supported for integer GEMM.");  \
-            return;                                                                            \
-        }                                                                                      \
-        if (a_is_transposed) {                                                                 \
-            min_lda = m > 1 ? m : 1;                                                           \
-        } else {                                                                               \
-            min_lda = k > 1 ? k : 1;                                                           \
-        }                                                                                      \
-        if (lda < min_lda) {                                                                   \
-            fprintf(stderr, "ERROR! Invalid LDA (leading dimension of A).");                   \
-            return;                                                                            \
-        }                                                                                      \
-        if (b_is_transposed) {                                                                 \
-            min_ldb = k > 1 ? k : 1;                                                           \
-        } else {                                                                               \
-            min_ldb = n > 1 ? n : 1;                                                           \
-        }                                                                                      \
-        if (ldb < min_ldb) {                                                                   \
-            fprintf(stderr, "ERROR! Invalid LDB (leading dimension of B).");                   \
-            return;                                                                            \
-        }                                                                                      \
-        min_ldc = n > 1 ? n : 1;                                                               \
-        if (ldc < min_ldc) {                                                                   \
-            fprintf(stderr, "ERROR! Invalid LDC (leading dimension of C).");                   \
-            return;                                                                            \
-        }                                                                                      \
-                                                                                               \
-        if (m == 0 || n == 0 || ((alpha == 0 || k == 0) && beta == 1)) {                       \
-            return;                                                                            \
-        }                                                                                      \
-                                                                                               \
-        for (size_t i = 0; i < m; ++i) {                                                       \
-            for (size_t j = 0; j < n; ++j) {                                                   \
-                c[i * ldc + j] = (beta == 0) ? 0 : c[i * ldc + j] * beta;                      \
-            }                                                                                  \
-        }                                                                                      \
-                                                                                               \
-        if (alpha == 0 || k == 0) {                                                            \
-            return;                                                                            \
-        }                                                                                      \
-                                                                                               \
-        for (size_t i = 0; i < m; ++i) {                                                       \
-            for (size_t l = 0; l < k; ++l) {                                                   \
-                DATA_TYPE a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];           \
-                for (size_t j = 0; j < n; ++j) {                                               \
-                    DATA_TYPE b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];       \
-                    c[i * ldc + j] += alpha * a_val * b_val;                                   \
-                }                                                                              \
-            }                                                                                  \
-        }                                                                                      \
+#define DEFINE_GEMM(FUNC_NAME, DATA_TYPE)                                                        \
+    void FUNC_NAME(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transa,                        \
+                   const CBLAS_TRANSPOSE transb, const unsigned int m, const unsigned int n,     \
+                   const unsigned int k, const DATA_TYPE alpha,                                  \
+                   const DATA_TYPE *MATRIX_RESTRICT a, const unsigned int lda,                   \
+                   const DATA_TYPE *MATRIX_RESTRICT b, const unsigned int ldb,                   \
+                   const DATA_TYPE beta, DATA_TYPE *MATRIX_RESTRICT c, const unsigned int ldc) { \
+        /* 'order' is unused and included only for compatibility. Only row-major data */         \
+        /* buffers are supported.                                                     */         \
+        unsigned int min_lda, min_ldb, min_ldc;                                                  \
+        bool         a_is_transposed = (transa == CblasTrans);                                   \
+        bool         b_is_transposed = (transb == CblasTrans);                                   \
+                                                                                                 \
+        if (a == NULL || b == NULL || c == NULL) {                                               \
+            fprintf(stderr, "ERROR! One of the matrices is a null pointer.");                    \
+            return;                                                                              \
+        }                                                                                        \
+        if ((transa == CblasConjTrans || transa == CblasConjNoTrans) ||                          \
+            (transb == CblasConjTrans || transb == CblasConjNoTrans)) {                          \
+            fprintf(stderr, "ERROR! Conjugate transpose is not supported for integer GEMM.");    \
+            return;                                                                              \
+        }                                                                                        \
+        if (a_is_transposed) {                                                                   \
+            min_lda = m > 1 ? m : 1;                                                             \
+        } else {                                                                                 \
+            min_lda = k > 1 ? k : 1;                                                             \
+        }                                                                                        \
+        if (lda < min_lda) {                                                                     \
+            fprintf(stderr, "ERROR! Invalid LDA (leading dimension of A).");                     \
+            return;                                                                              \
+        }                                                                                        \
+        if (b_is_transposed) {                                                                   \
+            min_ldb = k > 1 ? k : 1;                                                             \
+        } else {                                                                                 \
+            min_ldb = n > 1 ? n : 1;                                                             \
+        }                                                                                        \
+        if (ldb < min_ldb) {                                                                     \
+            fprintf(stderr, "ERROR! Invalid LDB (leading dimension of B).");                     \
+            return;                                                                              \
+        }                                                                                        \
+        min_ldc = n > 1 ? n : 1;                                                                 \
+        if (ldc < min_ldc) {                                                                     \
+            fprintf(stderr, "ERROR! Invalid LDC (leading dimension of C).");                     \
+            return;                                                                              \
+        }                                                                                        \
+                                                                                                 \
+        if (m == 0 || n == 0 || ((alpha == 0 || k == 0) && beta == 1)) {                         \
+            return;                                                                              \
+        }                                                                                        \
+                                                                                                 \
+        for (size_t i = 0; i < m; ++i) {                                                         \
+            for (size_t j = 0; j < n; ++j) {                                                     \
+                c[i * ldc + j] = (beta == 0) ? 0 : c[i * ldc + j] * beta;                        \
+            }                                                                                    \
+        }                                                                                        \
+                                                                                                 \
+        if (alpha == 0 || k == 0) {                                                              \
+            return;                                                                              \
+        }                                                                                        \
+                                                                                                 \
+        for (size_t i = 0; i < m; ++i) {                                                         \
+            for (size_t l = 0; l < k; ++l) {                                                     \
+                DATA_TYPE a_val = a_is_transposed ? a[l * lda + i] : a[i * lda + l];             \
+                for (size_t j = 0; j < n; ++j) {                                                 \
+                    DATA_TYPE b_val = b_is_transposed ? b[j * ldb + l] : b[l * ldb + j];         \
+                    c[i * ldc + j] += alpha * a_val * b_val;                                     \
+                }                                                                                \
+            }                                                                                    \
+        }                                                                                        \
     }
 
 // Sparse BLAS-like function for gathering elements from a
