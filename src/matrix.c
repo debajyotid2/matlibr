@@ -768,29 +768,6 @@ DEFINE_SCAL(i64_scal, int64_t)
 DEFINE_GEMM(i64_gemm, int64_t)
 
 /************************************************************************/
-/***************Functions for IntMatrix (integer data)******************/
-/************************************************************************/
-
-DEFINE_MATRIX_PREPARE(intmat_prepare, IntMatrix, int)
-DEFINE_MATRIX_CREATE(intmat_create, IntMatrix, int, intmat_prepare)
-DEFINE_MATRIX_ASSIGN(intmat_assign, IntMatrix, int)
-DEFINE_MATRIX_COPY(intmat_copy, IntMatrix, icopy, intmat_prepare)
-DEFINE_MATRIX_FILL(intmat_fill, IntMatrix, int)
-DEFINE_MATRIX_SET_DATA(intmat_set_data, IntMatrix, int)
-DEFINE_MATRIX_SCALE(intmat_scale, IntMatrix, int, iscal)
-DEFINE_MATRIX_REPEAT(intmat_repeat, IntMatrix, int, intmat_create, icopy)
-DEFINE_MATRIX_PRINT(intmat_print, IntMatrix, "%6d")
-DEFINE_MATRIX_RANGE(intmat_range, IntMatrix, int, intmat_prepare)
-DEFINE_MATRIX_ADD_SCALAR(intmat_add_scalar, IntMatrix, int)
-DEFINE_MATRIX_ADD(intmat_add, IntMatrix, iaxpy)
-DEFINE_MATRIX_SUB(intmat_sub, IntMatrix, iaxpy)
-DEFINE_MATRIX_VEC_ADD(intmat_vec_add, IntMatrix, iaxpy, int, intmat_add_scalar)
-DEFINE_MATRIX_VEC_SUB(intmat_vec_sub, IntMatrix, iaxpy, int, intmat_add_scalar)
-DEFINE_MATRIX_MUL(intmat_mul, IntMatrix, int, igemm, intmat_prepare)
-DEFINE_MATRIX_GATHER(intmat_gather, IntMatrix, IntMatrix, icopy)
-DEFINE_MATRIX_DESTROY(intmat_destroy, IntMatrix)
-
-/************************************************************************/
 /***************Functions for MatrixI32 *********************************/
 /************************************************************************/
 
