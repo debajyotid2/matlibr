@@ -294,76 +294,102 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
     return TENSOR_SUCCESS;                                                                      \
 };
 
-
-
-#define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, MATRIX_TYPE, PREPARE_FUNC, MATMUL_FUNC, TENSOR_VIEW_AS_MATRIX_FUNC)      \
-TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                                                             \
-                           const TENSOR_TYPE *b, bool trans_b,                                                             \
-                               TENSOR_TYPE *out) {                                                                         \
-    if (a==NULL || b==NULL || out==NULL || !a->data || !b->data) {                                                         \
-        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Got null pointer.");                                                         \
-    }                                                                                                                      \
-    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                                            \
-        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                                               \
-    }                                                                                                                      \
-    if (out == a || out == b) {                                                                                            \
-        RETURN_ON_ERROR(TENSOR_ERR_INPLACE_MATMUL,                                                                         \
-                "Inplace tensor multiplication not supported.");                                                           \
-    }                                                                                                                      \
-    if (a->ndim != b->ndim || a->ndim < 2 || b->ndim < 2) {                                                                \
-        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                                     \
-        "Shapes of A and B do not have correct number of dimensions.");                                                    \
-    }                                                                                                                      \
-    /* TODO: implement support for strided tensors */                                                                      \
-    if (!tensor_is_contiguous(a->shape, a->strides, a->ndim) ||                                                            \
-        !tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                                            \
-        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS,                                                                         \
-                        "Tensor multiplication not supported for non-contiguous tensors.");                                \
-    }                                                                                                                      \
-    size_t num_matmuls = 1;                                                                                                \
-    for (int i = 0; (size_t)i < a->ndim - 2; ++i) {                                                                        \
-        if (a->shape[i] != b->shape[i]) {                                                                                  \
-            RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                                 \
-                "Shapes of A and B must have same 'ndim - 2' dimensions.");                                                \
-        }                                                                                                                  \
-        num_matmuls *= a->shape[i];                                                                                        \
-    }                                                                                                                      \
-                                                                                                                           \
-    size_t a_nrows = a->shape[a->ndim - 2];                                                                                \
-    size_t a_ncols = a->shape[a->ndim - 1];                                                                                \
-    size_t b_nrows = b->shape[a->ndim - 2];                                                                                \
-    size_t b_ncols = b->shape[a->ndim - 1];                                                                                \
-                                                                                                                           \
-    size_t m = trans_a ? a_ncols: a_nrows;                                                                                 \
-    size_t k = trans_a ? a_nrows: a_ncols;                                                                                 \
-    size_t k_prime = trans_b ? b_ncols: b_nrows;                                                                           \
-    size_t n = trans_b ? b_nrows: b_ncols;                                                                                 \
-                                                                                                                           \
-    if (k != k_prime) {                                                                                                    \
-        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                                     \
-            "Tensor dimensions must satisfy k = k' for multiplying "                                                       \
-            "(..., m, k) and (..., k', n) matrices.");                                                                     \
-    }                                                                                                                      \
-    unsigned int out_shape[TENSOR_MAX_DIMS] = {0};                                                                         \
-    memcpy(&out_shape, a->shape, (a->ndim - 2) * sizeof(unsigned int));                                                    \
-    out_shape[a->ndim-2] = (unsigned int)m;                                                                                \
-    out_shape[a->ndim-1] = (unsigned int)n;                                                                                \
-                                                                                                                           \
-    TensorStatusCode res = PREPARE_FUNC(out, a->ndim, out_shape, false);                                                   \
-    if (res != TENSOR_SUCCESS) {                                                                                           \
-        return res;                                                                                                        \
-    }                                                                                                                      \
-                                                                                                                           \
-    MatrixStatusCode mat_res;                                                                                              \
-    for (size_t matmul_idx = 0; matmul_idx < num_matmuls; ++matmul_idx) {                                                  \
-        MATRIX_TYPE temp_a = TENSOR_VIEW_AS_MATRIX_FUNC(a, matmul_idx * a_nrows*a_ncols, a_nrows, a_ncols);                \
-        MATRIX_TYPE temp_b = TENSOR_VIEW_AS_MATRIX_FUNC(b, matmul_idx * b_nrows*b_ncols, b_nrows, b_ncols);                \
-        MATRIX_TYPE temp_out = TENSOR_VIEW_AS_MATRIX_FUNC(out, matmul_idx * m * n, m, n);                                  \
-                                                                                                                           \
-        mat_res = MATMUL_FUNC(&temp_a, trans_a, &temp_b, trans_b, &temp_out);                                              \
-        if (mat_res != MATRIX_SUCCESS) return tensorstatuscode_from_matrixstatuscode(mat_res);                             \
-    }                                                                                                                      \
-    return TENSOR_SUCCESS;                                                                                                 \
+#define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, DATA_TYPE,                                                      \
+                           PREPARE_FUNC, GEMM_FUNC, ALPHA, BETA)                                                  \
+TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                                                    \
+                           const TENSOR_TYPE *b, bool trans_b,                                                    \
+                               TENSOR_TYPE *out) {                                                                \
+    if (a==NULL || b==NULL || out==NULL || !a->data || !b->data) {                                                \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Got null pointer.");                                                \
+    }                                                                                                             \
+    if (a->magic != TENSOR_MAGIC || b->magic != TENSOR_MAGIC) {                                                   \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Input tensor not initialized");                                \
+    }                                                                                                             \
+    if (out == a || out == b) {                                                                                   \
+        RETURN_ON_ERROR(TENSOR_ERR_INPLACE_MATMUL,                                                                \
+                "Inplace tensor multiplication not supported.");                                                  \
+    }                                                                                                             \
+    if (a->ndim != b->ndim || a->ndim < 2 || b->ndim < 2) {                                                       \
+        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                            \
+        "Shapes of A and B do not have correct number of dimensions.");                                           \
+    }                                                                                                             \
+    size_t num_matmuls = 1;                                                                                       \
+    for (int i = 0; (size_t)i < a->ndim - 2; ++i) {                                                               \
+        if (a->shape[i] != b->shape[i]) {                                                                         \
+            RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                        \
+                "Shapes of A and B must have same 'ndim - 2' dimensions.");                                       \
+        }                                                                                                         \
+        num_matmuls *= a->shape[i];                                                                               \
+    }                                                                                                             \
+                                                                                                                  \
+    size_t a_nrows = a->shape[a->ndim - 2];                                                                       \
+    size_t a_ncols = a->shape[a->ndim - 1];                                                                       \
+    size_t b_nrows = b->shape[a->ndim - 2];                                                                       \
+    size_t b_ncols = b->shape[a->ndim - 1];                                                                       \
+                                                                                                                  \
+    size_t m = trans_a ? a_ncols: a_nrows;                                                                        \
+    size_t k = trans_a ? a_nrows: a_ncols;                                                                        \
+    size_t k_prime = trans_b ? b_ncols: b_nrows;                                                                  \
+    size_t n = trans_b ? b_nrows: b_ncols;                                                                        \
+                                                                                                                  \
+    if (k != k_prime) {                                                                                           \
+        RETURN_ON_ERROR(TENSOR_ERR_DIMENSION_MISMATCH,                                                            \
+            "Tensor dimensions must satisfy k = k' for multiplying "                                              \
+            "(..., m, k) and (..., k', n) matrices.");                                                            \
+    }                                                                                                             \
+                                                                                                                  \
+    DATA_TYPE alpha = ALPHA, beta = BETA;                                                                         \
+                                                                                                                  \
+    size_t a_row_stride = a->strides[a->ndim - 2];                                                                \
+    size_t a_col_stride = a->strides[a->ndim - 1];                                                                \
+    size_t b_row_stride = b->strides[a->ndim - 2];                                                                \
+    size_t b_col_stride = b->strides[a->ndim - 1];                                                                \
+                                                                                                                  \
+    size_t lda = a_ncols, ldb = b_ncols;                                                                          \
+    bool act_trans_a = trans_a;                                                                                   \
+    if (a_col_stride == 1 && a_row_stride >= (a_ncols > 1 ? a_ncols: 1)) {                                        \
+        lda = (int)a_row_stride;                                                                                  \
+    } else if (a_row_stride == 1 && a_col_stride >= (a_nrows > 1 ? a_nrows: 1)) {                                 \
+        act_trans_a = !act_trans_a;                                                                               \
+        lda = (int)a_col_stride;                                                                                  \
+    } else {                                                                                                      \
+        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS, "Inner 2D slice of A must have a unit stride.");               \
+    }                                                                                                             \
+                                                                                                                  \
+    bool act_trans_b = trans_b;                                                                                   \
+    if (b_col_stride == 1 && b_row_stride >= (b_ncols > 1 ? b_ncols: 1)) {                                        \
+        ldb = (int)b_row_stride;                                                                                  \
+    } else if (b_row_stride == 1 && b_col_stride >= (b_nrows > 1 ? b_nrows: 1)) {                                 \
+        act_trans_b = !act_trans_b;                                                                               \
+        ldb = (int)b_col_stride;                                                                                  \
+    } else {                                                                                                      \
+        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS, "Inner 2D slice of B must have a unit stride.");               \
+    }                                                                                                             \
+                                                                                                                  \
+    CBLAS_TRANSPOSE transpose_a = act_trans_a ? CblasTrans : CblasNoTrans;                                        \
+    CBLAS_TRANSPOSE transpose_b = act_trans_b ? CblasTrans : CblasNoTrans;                                        \
+                                                                                                                  \
+    unsigned int out_shape[TENSOR_MAX_DIMS] = {0};                                                                \
+    memcpy(&out_shape, a->shape, (a->ndim - 2) * sizeof(unsigned int));                                           \
+    out_shape[a->ndim-2] = (unsigned int)m;                                                                       \
+    out_shape[a->ndim-1] = (unsigned int)n;                                                                       \
+                                                                                                                  \
+    TensorStatusCode res = PREPARE_FUNC(out, a->ndim, out_shape, false);                                          \
+    if (res != TENSOR_SUCCESS) {                                                                                  \
+        return res;                                                                                               \
+    }                                                                                                             \
+    size_t out_stride = m * n;                                                                                    \
+                                                                                                                  \
+    for (size_t matmul_idx = 0; matmul_idx < num_matmuls; ++matmul_idx) {                                         \
+        size_t a_off = (a->ndim == 2) ? 0: tensor_flat_to_strided_offset(matmul_idx, a->shape,                    \
+                                                                         a->strides, a->ndim - 2);                \
+        size_t b_off = (b->ndim == 2) ? 0: tensor_flat_to_strided_offset(matmul_idx, b->shape,                    \
+                                                                         b->strides, b->ndim - 2);                \
+         GEMM_FUNC(CblasRowMajor, transpose_a, transpose_b, m, n, k, alpha,                                       \
+                  a->data + a_off, lda, b->data + b_off,                                                          \
+                  ldb, beta, out->data + matmul_idx * out_stride, n);                                             \
+    }                                                                                                             \
+    return TENSOR_SUCCESS;                                                                                        \
 }
 
 #define DEFINE_TENSOR_PERMUTE(FUNC_NAME, TENSOR_TYPE)                                       \
@@ -499,8 +525,7 @@ DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_add, TensorF64, double, cblas_daxpy, +=, 1.0)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_sub, TensorF64, double, cblas_daxpy, -=, -1.0)
-DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, MatrixF64, tensorf64_prepare,
-                  matf64_mul, tensorf64_view_as_matrix)
+DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dgemm, 1.0, 0.0)
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
 DEFINE_TENSOR_GATHER(tensorf64_gather, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)
