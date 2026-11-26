@@ -1,5 +1,4 @@
 #include "tensor.h"
-#include "matrix.h"
 #include "matrix_types.h"
 #include "tensor_types.h"
 
