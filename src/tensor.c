@@ -400,7 +400,7 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE* src, TENSOR_TYPE* dest,           
 #define DEFINE_TENSOR_GATHER(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, PREPARE_FUNC)                   \
 TensorStatusCode FUNC_NAME(const TENSOR_TYPE* from, TENSOR_TYPE* to,                            \
                             const MatrixI32* idxs, unsigned int dim) {                          \
-    if (!from || !to || !idxs || !from->data) {                                                 \
+    if (!from || !to || !idxs || !from->data || !idxs->data) {                                  \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                         \
     }                                                                                           \
     if (from->magic != TENSOR_MAGIC) {                                                          \
