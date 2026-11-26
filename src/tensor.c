@@ -177,7 +177,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {         
         }                                                                               \
     }                                                                                   \
     return TENSOR_SUCCESS;                                                              \
-};
+}
 
 #define DEFINE_TENSOR_RESHAPE(FUNC_NAME, TENSOR_TYPE)                                           \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int new_ndim,                                        \
@@ -211,7 +211,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int new_ndim,                        
     memcpy(t->shape, new_shape, new_ndim * sizeof(unsigned int));                               \
     tensor_set_strides(t->shape, t->ndim, t->strides);                                          \
     return TENSOR_SUCCESS;                                                                      \
-};
+}
 
 #define DEFINE_TENSOR_SET_DATA(FUNC_NAME, TENSOR_TYPE, DATA_TYPE)                           \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {            \
@@ -234,7 +234,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
         }                                                                                   \
     }                                                                                       \
     return TENSOR_SUCCESS;                                                                  \
-};
+}
 
 #define DEFINE_TENSOR_ELEMWISE_OP(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, AXPY_FUNC, OP, ALPHA)      \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
@@ -259,7 +259,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
         }                                                                                       \
     }                                                                                           \
     return TENSOR_SUCCESS;                                                                      \
-};
+}
 
 #define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, DATA_TYPE,                                                      \
                            PREPARE_FUNC, GEMM_FUNC, ALPHA, BETA)                                                  \
