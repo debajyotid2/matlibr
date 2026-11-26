@@ -2,87 +2,103 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdlib.h>
 
+#include "matrix.h"
 #include "tensor.h"
 
-// Benchmarks for TensorF64 (Double Precision Operations with BLAS)
+// Benchmarks for TensorF64 (Contiguous Arithmetic & Batched Matmul)
 TEST_CASE("TensorF64 Performance", "[tensorf64][benchmark]") {
-    // Small Tensor Benchmarks (4x32x32)
-    const unsigned int small_shape[] = {4, 32, 32};
-    TensorF64          sm_a = TENSOR_INIT;
-    TensorF64          sm_b = TENSOR_INIT;
-    TensorF64          sm_r = TENSOR_INIT;
-    tensorf64_create(&sm_a, 3, small_shape);
-    tensorf64_create(&sm_b, 3, small_shape);
-    tensorf64_create(&sm_r, 3, small_shape);
-    for (size_t i = 0; i < sm_a.size; ++i) {
-        sm_a.data[i] = 1.0;
-        sm_b.data[i] = 2.0;
-    }
-
-    BENCHMARK("TensorF64 (BLAS) Add [4x32x32]") { return tensorf64_add(&sm_a, &sm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Sub [4x32x32]") { return tensorf64_sub(&sm_a, &sm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Mul [4x32x32]") {
-        return tensorf64_mul(&sm_a, false, &sm_b, false, &sm_r);
+    const unsigned int shapes[3][3] = {
+        {4, 32, 32},
+        {4, 256, 256},
+        {4, 1024, 1024}
     };
+    const char *labels[] = {"4x32x32", "4x256x256", "4x1024x1024"};
 
-    tensorf64_destroy(&sm_a);
-    tensorf64_destroy(&sm_b);
-    tensorf64_destroy(&sm_r);
+    for (size_t idx = 0; idx < 3; ++idx) {
+        TensorF64 a = TENSOR_INIT;
+        TensorF64 b = TENSOR_INIT;
+        TensorF64 r = TENSOR_INIT;
+        tensorf64_create(&a, 3, shapes[idx]);
+        tensorf64_create(&b, 3, shapes[idx]);
+        tensorf64_create(&r, 3, shapes[idx]);
+        for (size_t i = 0; i < a.size; ++i) {
+            a.data[i] = 1.0;
+            b.data[i] = 2.0;
+        }
 
-    // Medium Tensor Benchmarks (4x256x256)
-    const unsigned int med_shape[] = {4, 256, 256};
-    TensorF64          mm_a = TENSOR_INIT;
-    TensorF64          mm_b = TENSOR_INIT;
-    TensorF64          mm_r = TENSOR_INIT;
-    tensorf64_create(&mm_a, 3, med_shape);
-    tensorf64_create(&mm_b, 3, med_shape);
-    tensorf64_create(&mm_r, 3, med_shape);
-    for (size_t i = 0; i < mm_a.size; ++i) {
-        mm_a.data[i] = 1.0;
-        mm_b.data[i] = 2.0;
+        BENCHMARK(std::string("TensorF64 (BLAS) Add [") + labels[idx] + "]") {
+            return tensorf64_add(&a, &b);
+        };
+
+        BENCHMARK(std::string("TensorF64 (BLAS) Sub [") + labels[idx] + "]") {
+            return tensorf64_sub(&a, &b);
+        };
+
+        BENCHMARK(std::string("TensorF64 (BLAS) Mul [") + labels[idx] + "]") {
+            return tensorf64_mul(&a, false, &b, false, &r);
+        };
+
+        tensorf64_destroy(&a);
+        tensorf64_destroy(&b);
+        tensorf64_destroy(&r);
     }
-
-    BENCHMARK("TensorF64 (BLAS) Add [4x256x256]") { return tensorf64_add(&mm_a, &mm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Sub [4x256x256]") { return tensorf64_sub(&mm_a, &mm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Mul [4x256x256]") {
-        return tensorf64_mul(&mm_a, false, &mm_b, false, &mm_r);
-    };
-
-    tensorf64_destroy(&mm_a);
-    tensorf64_destroy(&mm_b);
-    tensorf64_destroy(&mm_r);
-
-    // Large Tensor Benchmarks (4x1024x1024)
-    const unsigned int large_shape[] = {4, 1024, 1024};
-    TensorF64          lm_a = TENSOR_INIT;
-    TensorF64          lm_b = TENSOR_INIT;
-    TensorF64          lm_r = TENSOR_INIT;
-    tensorf64_create(&lm_a, 3, large_shape);
-    tensorf64_create(&lm_b, 3, large_shape);
-    tensorf64_create(&lm_r, 3, large_shape);
-    for (size_t i = 0; i < lm_a.size; ++i) {
-        lm_a.data[i] = 1.0;
-        lm_b.data[i] = 2.0;
-    }
-
-    BENCHMARK("TensorF64 (BLAS) Add [4x1024x1024]") { return tensorf64_add(&lm_a, &lm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Sub [4x1024x1024]") { return tensorf64_sub(&lm_a, &lm_b); };
-
-    BENCHMARK("TensorF64 (BLAS) Mul [4x1024x1024]") {
-        return tensorf64_mul(&lm_a, false, &lm_b, false, &lm_r);
-    };
-
-    tensorf64_destroy(&lm_a);
-    tensorf64_destroy(&lm_b);
-    tensorf64_destroy(&lm_r);
 }
 
-TEST_CASE("TensorF64 Creation, Copy, and Metadata Performance", "[tensorf64][benchmark]") {
+// Benchmarks for Permuted / Strided Views (Coalescing + Odometer + Zero-Copy GEMM)
+TEST_CASE("TensorF64 Strided View Performance", "[tensorf64][strided][benchmark]") {
+    const unsigned int shape[] = {8, 256, 256};
+    const unsigned int perm_batch_shape[] = {256, 8, 256};
+    const unsigned int perm_batch[] = {1, 0, 2};
+    const unsigned int perm_trans[] = {0, 2, 1};
+
+    TensorF64 a = TENSOR_INIT;
+    TensorF64 b = TENSOR_INIT;
+    TensorF64 out = TENSOR_INIT;
+    TensorF64 perm_a = TENSOR_INIT;
+    TensorF64 perm_b = TENSOR_INIT;
+    TensorF64 trans_a = TENSOR_INIT;
+    TensorF64 copy_dst = TENSOR_INIT;
+
+    tensorf64_create(&a, 3, shape);
+    tensorf64_create(&b, 3, shape);
+    tensorf64_create(&out, 3, shape);
+    tensorf64_create(&copy_dst, 3, perm_batch_shape);
+    for (size_t i = 0; i < a.size; ++i) {
+        a.data[i] = 1.0;
+        b.data[i] = 2.0;
+    }
+
+    tensorf64_permute(&a, &perm_a, perm_batch);
+    tensorf64_permute(&b, &perm_b, perm_batch);
+    tensorf64_permute(&a, &trans_a, perm_trans);
+
+    BENCHMARK("TensorF64 Permute View [8x256x256]") {
+        return tensorf64_permute(&a, &perm_a, perm_batch);
+    };
+
+    BENCHMARK("TensorF64 Strided Copy (Materialize) [256x8x256]") {
+        return tensorf64_copy(&copy_dst, &perm_a);
+    };
+
+    BENCHMARK("TensorF64 Strided Add [256x8x256]") {
+        return tensorf64_add(&perm_a, &perm_b);
+    };
+
+    BENCHMARK("TensorF64 Strided Batched Mul (Transposed View) [8x256x256]") {
+        return tensorf64_mul(&trans_a, false, &b, false, &out);
+    };
+
+    tensorf64_destroy(&perm_a);
+    tensorf64_destroy(&perm_b);
+    tensorf64_destroy(&trans_a);
+    tensorf64_destroy(&copy_dst);
+    tensorf64_destroy(&a);
+    tensorf64_destroy(&b);
+    tensorf64_destroy(&out);
+}
+
+// Benchmarks for Creation, Copy, Reshape, Set Data, and Gather
+TEST_CASE("TensorF64 Memory, Metadata, and Gather Performance", "[tensorf64][benchmark]") {
     const unsigned int shape[] = {4, 512, 512};
     const unsigned int reshaped[] = {16, 256, 256};
 
@@ -96,11 +112,10 @@ TEST_CASE("TensorF64 Creation, Copy, and Metadata Performance", "[tensorf64][ben
     TensorF64 f64_src = TENSOR_INIT;
     TensorF64 f64_dst = TENSOR_INIT;
     tensorf64_create(&f64_src, 3, shape);
+    tensorf64_create(&f64_dst, 3, shape);
 
     BENCHMARK("TensorF64 Copy [4x512x512]") {
-        tensorf64_copy(&f64_dst, &f64_src);
-        tensorf64_destroy(&f64_dst);
-        return 0;
+        return tensorf64_copy(&f64_dst, &f64_src);
     };
 
     double *raw_src = (double *)malloc(f64_src.size * sizeof(double));
@@ -114,5 +129,30 @@ TEST_CASE("TensorF64 Creation, Copy, and Metadata Performance", "[tensorf64][ben
         return tensorf64_reshape(&f64_src, 3, shape);
     };
 
+    MatrixI32 idxs = MATRIX_INIT;
+    TensorF64 gathered = TENSOR_INIT;
+    mati32_create(&idxs, 256, 1);
+    for (int i = 0; i < 256; ++i) {
+        idxs.data[i] = (i * 2) % 512;
+    }
+
+    BENCHMARK("TensorF64 Gather Axis 1 [4x512x512 -> 4x256x512]") {
+        return tensorf64_gather(&f64_src, &gathered, &idxs, 1);
+    };
+
+    TensorF64 perm_src = TENSOR_INIT;
+    TensorF64 gathered_strided = TENSOR_INIT;
+    const unsigned int perm_dims[] = {1, 0, 2};
+    tensorf64_permute(&f64_src, &perm_src, perm_dims);
+
+    BENCHMARK("TensorF64 Strided Gather Axis 0 [512x4x512 -> 256x4x512]") {
+        return tensorf64_gather(&perm_src, &gathered_strided, &idxs, 0);
+    };
+
+    tensorf64_destroy(&perm_src);
+    tensorf64_destroy(&gathered);
+    tensorf64_destroy(&gathered_strided);
+    mati32_destroy(&idxs);
     tensorf64_destroy(&f64_src);
+    tensorf64_destroy(&f64_dst);
 }
