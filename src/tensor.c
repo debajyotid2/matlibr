@@ -109,7 +109,7 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
             RETURN_ON_ERROR(TENSOR_ERR_MEMORY_ALLOCATION, "Allocation failed.");              \
         }                                                                                     \
         t->ndim = (size_t)ndim;                                                               \
-        memset(t->shape, (unsigned int)0, ndim * sizeof(unsigned int));                       \
+        memset(t->shape, (unsigned int)0, TENSOR_MAX_DIMS);                                   \
         memcpy(t->shape, shape, ndim * sizeof(unsigned int));                                 \
         tensor_set_strides(t->shape, t->ndim, t->strides);                                    \
         t->size = size;                                                                       \
