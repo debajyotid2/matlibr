@@ -1,9 +1,14 @@
 #ifndef TENSOR_TYPES_H
 #define TENSOR_TYPES_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "matrix_types.h"
 
@@ -87,4 +92,7 @@ static inline size_t _tensor_offset(const void *data, size_t ndim, unsigned int 
         sizeof((const size_t[]){__VA_ARGS__}) / sizeof(size_t), (const size_t[]){__VA_ARGS__},  \
         __func__, __LINE__)])
 
+#ifdef __cplusplus
+}
+#endif
 #endif // TENSOR_TYPES_H
