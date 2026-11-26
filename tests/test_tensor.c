@@ -1,12 +1,12 @@
-#include "tensor.h"
 #include "matrix.h"
+#include "tensor.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 // Helper Functions for Testing
 
@@ -49,7 +49,8 @@ TEST_CASE("TensorF64: Creation and Destruction", "[tensorf64]") {
         const unsigned int zero_shape[] = {2, 0, 4};
         const unsigned int valid_shape[] = {2, 3};
         REQUIRE(tensorf64_create(&t, 0, valid_shape) == TENSOR_ERR_INVALID_DIMENSION);
-        REQUIRE(tensorf64_create(&t, TENSOR_MAX_DIMS + 1, valid_shape) == TENSOR_ERR_INVALID_DIMENSION);
+        REQUIRE(tensorf64_create(&t, TENSOR_MAX_DIMS + 1, valid_shape) ==
+                TENSOR_ERR_INVALID_DIMENSION);
         REQUIRE(tensorf64_create(&t, 3, zero_shape) == TENSOR_ERR_INVALID_DIMENSION);
     }
 
@@ -180,16 +181,15 @@ TEST_CASE("TensorF64: Gather", "[tensorf64]") {
     TensorF64          expected = TENSOR_INIT;
     MatrixI32          idxs = MATRIX_INIT;
     const unsigned int shape[] = {2, 3, 2};
-    const double       src_data[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
-                                       7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
-    double             tol = 1.0e-9;
+    const double src_data[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+    double       tol = 1.0e-9;
 
     tensorf64_create(&from, 3, shape);
     tensorf64_set_data(&from, src_data, 12);
 
     SECTION("Gather along middle axis with repeated and reordered indices") {
         const unsigned int exp_shape[] = {2, 4, 2};
-        const double       exp_data[16] = {5.0, 6.0, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0,
+        const double       exp_data[16] = {5.0,  6.0,  1.0, 2.0, 5.0,  6.0,  3.0, 4.0,
                                            11.0, 12.0, 7.0, 8.0, 11.0, 12.0, 9.0, 10.0};
         mati32_create(&idxs, 4, 1);
         idxs.data[0] = 2;
@@ -267,7 +267,7 @@ TEST_CASE("TensorF64: Set Data", "[tensorf64]") {
     }
 
     SECTION("Overwrite existing tensor data") {
-        const double src2[12] = {-1.0, -2.0, -3.0, -4.0, -5.0, -6.0,
+        const double src2[12] = {-1.0, -2.0, -3.0, -4.0,  -5.0,  -6.0,
                                  -7.0, -8.0, -9.0, -10.0, -11.0, -12.0};
         tensorf64_set_data(&t, src, 12);
         REQUIRE(tensorf64_set_data(&t, src2, 12) == TENSOR_SUCCESS);
@@ -393,7 +393,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     SECTION("Batched multiplication without transpose") {
         TensorF64          a = TENSOR_INIT;
         const unsigned int shape_a[] = {2, 2, 3};
-        const double       data_a[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+        const double data_a[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
         tensorf64_create(&a, 3, shape_a);
         tensorf64_set_data(&a, data_a, 12);
 
@@ -403,8 +403,8 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     }
 
     SECTION("Batched multiplication with transpose") {
-        TensorF64          a_t = TENSOR_INIT;
-        const double       data_at[12] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0, 7.0, 10.0, 8.0, 11.0, 9.0, 12.0};
+        TensorF64    a_t = TENSOR_INIT;
+        const double data_at[12] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0, 7.0, 10.0, 8.0, 11.0, 9.0, 12.0};
         tensorf64_create(&a_t, 3, shape_b);
         tensorf64_set_data(&a_t, data_at, 12);
 
@@ -426,6 +426,22 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         REQUIRE(tensorf64_mul(&b, true, &b, false, &b) == TENSOR_ERR_INPLACE_MATMUL);
         REQUIRE(tensorf64_mul(NULL, false, &b, false, &out) == TENSOR_ERR_NULL_PTR);
         REQUIRE(tensorf64_mul(&b, false, &b, false, NULL) == TENSOR_ERR_NULL_PTR);
+    }
+
+    SECTION("Batched multiplication with permuted view") {
+        TensorF64          a_src = TENSOR_INIT;
+        TensorF64          a_perm = TENSOR_INIT;
+        const unsigned int perm_dims[] = {0, 2, 1};
+        const double data_at[12] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0, 7.0, 10.0, 8.0, 11.0, 9.0, 12.0};
+        tensorf64_create(&a_src, 3, shape_b);
+        tensorf64_set_data(&a_src, data_at, 12);
+        tensorf64_permute(&a_src, &a_perm, perm_dims);
+
+        REQUIRE(tensorf64_mul(&a_perm, false, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
+
+        tensorf64_destroy(&a_perm);
+        tensorf64_destroy(&a_src);
     }
 
     tensorf64_destroy(&b);
