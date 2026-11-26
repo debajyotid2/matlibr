@@ -869,29 +869,6 @@ MatrixStatusCode intmat_fill_random(IntMatrix *mat, int low, int high, bool repl
 }
 
 /************************************************************************/
-/***************Functions for Matrix (double precision data)*************/
-/************************************************************************/
-
-DEFINE_MATRIX_PREPARE(mat_prepare, Matrix, double)
-DEFINE_MATRIX_CREATE(mat_create, Matrix, double, mat_prepare)
-DEFINE_MATRIX_ASSIGN(mat_assign, Matrix, double)
-DEFINE_MATRIX_COPY(mat_copy, Matrix, cblas_dcopy, mat_prepare)
-DEFINE_MATRIX_FILL(mat_fill, Matrix, double)
-DEFINE_MATRIX_SET_DATA(mat_set_data, Matrix, double)
-DEFINE_MATRIX_SCALE(mat_scale, Matrix, double, cblas_dscal)
-DEFINE_MATRIX_REPEAT(mat_repeat, Matrix, double, mat_create, cblas_dcopy)
-DEFINE_MATRIX_PRINT(mat_print, Matrix, "%12.06f")
-DEFINE_MATRIX_RANGE(mat_range, Matrix, double, mat_prepare)
-DEFINE_MATRIX_ADD_SCALAR(mat_add_scalar, Matrix, double)
-DEFINE_MATRIX_ADD(mat_add, Matrix, cblas_daxpy)
-DEFINE_MATRIX_SUB(mat_sub, Matrix, cblas_daxpy)
-DEFINE_MATRIX_VEC_ADD(mat_vec_add, Matrix, cblas_daxpy, double, mat_add_scalar)
-DEFINE_MATRIX_VEC_SUB(mat_vec_sub, Matrix, cblas_daxpy, double, mat_add_scalar)
-DEFINE_MATRIX_MUL(mat_mul, Matrix, double, double_gemm_wrapper, mat_prepare)
-DEFINE_MATRIX_GATHER(mat_gather, Matrix, IntMatrix, cblas_dcopy)
-DEFINE_MATRIX_DESTROY(mat_destroy, Matrix)
-
-/************************************************************************/
 /***************Functions for MatrixF32 *********************************/
 /************************************************************************/
 
