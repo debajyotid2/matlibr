@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <math.h>
+#include <float.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -451,4 +452,48 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     tensorf64_destroy(&b);
     tensorf64_destroy(&out);
     tensorf64_destroy(&expected);
+}
+
+TEST_CASE("TensorF64: Fill Random Uniform", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    const unsigned int shape[] = {2, 3, 4};
+    tensorf64_create(&t, 3, shape);
+
+    SECTION("Valid uniform range") {
+        const double low = -5.0;
+        const double high = 10.0;
+        REQUIRE(tensorf64_fill_random_uniform(&t, low, high) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] >= low);
+            REQUIRE(t.data[i] < high);
+        }
+    }
+
+    SECTION("Invalid ranges") {
+        REQUIRE(tensorf64_fill_random_uniform(&t, 5.0, 5.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, 10.0, 5.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, NAN, 1.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, 0.0, INFINITY) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, -DBL_MAX, DBL_MAX) == TENSOR_ERR_RANGE_INVALID);
+    }
+
+    SECTION("Null tensors") {
+        TensorF64 uninit = TENSOR_INIT;
+        REQUIRE(tensorf64_fill_random_uniform(NULL, 0.0, 1.0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_fill_random_uniform(&uninit, 0.0, 1.0) == TENSOR_ERR_NULL_PTR);
+    }
+
+    SECTION("Non-contiguous view rejected") {
+        TensorF64          view = TENSOR_INIT;
+        const unsigned int perm[] = {2, 0, 1};
+        tensorf64_permute(&t, &view, perm);
+
+        REQUIRE(tensorf64_fill_random_uniform(&view, 1.0, 2.0) == TENSOR_ERR_NON_CONTIGUOUS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] == 0.0);
+        }
+        tensorf64_destroy(&view);
+    }
+
+    tensorf64_destroy(&t);
 }

@@ -12,6 +12,27 @@ extern "C" {
 
 #define TENSOR_MAGIC 0xF633DEF2AB795EC1ULL
 
+// Generate a random integer between 0 and upper_bound
+unsigned int rand_int(unsigned int upper_bound) {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return number % upper_bound;
+#else
+    return arc4random_uniform(upper_bound);
+#endif
+}
+
+// Generate a random double precision number between 0.0 and 1.0
+double rand_double() {
+#ifdef _WIN32
+    unsigned int number;
+    rand_s(&number);
+    return (double)number / ((double)UINT_MAX + 1);
+#else
+    return drand48();
+#endif
+}
 // Function for displaying and handling errors
 static void error_handler(const char *function, int line, TensorStatusCode status_code,
                           const char *msg) {
@@ -497,6 +518,21 @@ DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dge
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
 DEFINE_TENSOR_GATHER(tensorf64_gather, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)
+
+TensorStatusCode tensorf64_fill_random_uniform(TensorF64* t, const double low, const double high) {
+    if (!t || !t->data) RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");
+    if (low >= high) RETURN_ON_ERROR(TENSOR_ERR_RANGE_INVALID, "'low' must be < 'high'.");
+    if (!isfinite(low) || !isfinite(high)) RETURN_ON_ERROR(TENSOR_ERR_RANGE_INVALID, "Invalid 'low' or 'high'.");
+    if (t->magic != TENSOR_MAGIC) RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Uninitialized tensor.");
+    const double diff = high - low;
+    if (!isfinite(diff)) RETURN_ON_ERROR(TENSOR_ERR_RANGE_INVALID, "Double data type overflows on (high - low).");
+    if (!tensor_is_contiguous(t->shape, t->strides, t->ndim)) 
+        RETURN_ON_ERROR(TENSOR_ERR_NON_CONTIGUOUS, "Only contiguous tensors supported.");
+    // TODO: support non-contiguous tensors
+    for (size_t i = 0; i < t->size; i++)
+        t->data[i] = low + diff * rand_double();
+    return TENSOR_SUCCESS;
+}
 
 #ifdef __cplusplus
 }

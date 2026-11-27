@@ -30,6 +30,8 @@ TensorStatusCode tensorf64_gather(const TensorF64 *from, TensorF64 *to, const Ma
                                   unsigned int dim);
 TensorStatusCode tensorf64_destroy(TensorF64 *t);
 
+TensorStatusCode tensorf64_fill_random_uniform(TensorF64 *t, const double low, const double high);
+
 #ifdef __cplusplus
 }
 #endif
