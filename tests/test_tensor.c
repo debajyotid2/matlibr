@@ -89,7 +89,7 @@ TEST_CASE("TensorF64: Copy and Reshape", "[tensorf64]") {
         REQUIRE(tensorf64_copy(&copy, &t) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&t, &copy, tol));
         REQUIRE(t.data != copy.data);
-        REQUIRE(tensorf64_copy(&t, &t) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_copy(&t, &t) == TENSOR_ERR_VIEW_TENSOR_OVERWRITE);
         tensorf64_destroy(&copy);
     }
 
