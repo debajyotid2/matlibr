@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Matrices should be initialized to MATRIX_INIT.
 // E.g. `Matrix a = MATRIX_INIT;`
 #define MATRIX_INIT {0}
@@ -66,5 +70,9 @@ static inline size_t _matrix_offset(const void *matrix, size_t nrows, size_t nco
     (((matrix) != NULL ? (matrix)->data : NULL)[_matrix_offset(                                   \
         (matrix), (matrix) != NULL ? (matrix)->nrows : 0, (matrix) != NULL ? (matrix)->ncols : 0, \
         (row), (col), __func__, __LINE__)])
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // MATRIX_TYPES_H

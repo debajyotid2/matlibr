@@ -18,12 +18,12 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#include "matrix_types.h"
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "matrix_types.h"
-#include <stdbool.h>
 
 // Functions for int32 matrices
 MatrixStatusCode mati32_create(MatrixI32 *matrix, int nrow, int ncol);

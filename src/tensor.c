@@ -1,7 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "tensor.h"
 #include "matrix_types.h"
 #include "tensor_types.h"
@@ -9,6 +5,10 @@ extern "C" {
 #include <cblas.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define TENSOR_MAGIC 0xF633DEF2AB795EC1ULL
 
@@ -238,8 +238,8 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
     return TENSOR_SUCCESS;                                                                  \
 }
 
-#define DEFINE_TENSOR_ELEMWISE_OP(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, AXPY_FUNC, OP, ALPHA)      \
-TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {                              \
+#define DEFINE_TENSOR_ELEMWISE_OP(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, AXPY_FUNC, OP, FAC)        \
+TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b, const DATA_TYPE alpha) {       \
     if (!a || !b || !a->data || !b->data) {                                                     \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
     }                                                                                           \
@@ -252,11 +252,12 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
     }                                                                                           \
     if (tensor_is_contiguous(a->shape, a->strides, a->ndim) &&                                  \
         tensor_is_contiguous(b->shape, b->strides, b->ndim)) {                                  \
-        AXPY_FUNC(a->size, (DATA_TYPE)(ALPHA), b->data, 1, a->data, 1);                         \
+        AXPY_FUNC(a->size, (DATA_TYPE)FAC * alpha, b->data, 1, a->data, 1);                     \
     } else {                                                                                    \
         for (size_t i = 0; i < a->size; ++i) {                                                  \
             size_t offset_a = tensor_flat_to_strided_offset(i, a->shape, a->strides, a->ndim);  \
             size_t offset_b = tensor_flat_to_strided_offset(i, b->shape, b->strides, b->ndim);  \
+            a->data[offset_a] *= alpha;                                                         \
             a->data[offset_a] OP b->data[offset_b];                                             \
         }                                                                                       \
     }                                                                                           \
