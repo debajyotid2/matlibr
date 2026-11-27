@@ -259,6 +259,20 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, const DATA_TYPE *src, size_t count) {
     return TENSOR_SUCCESS;                                                                  \
 }
 
+#define DEFINE_TENSOR_FILL(FUNC_NAME, TENSOR_TYPE, DATA_TYPE)                                   \
+TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const DATA_TYPE value) {                             \
+    if (!a || !a->data) {                                                                       \
+        RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received");                          \
+    }                                                                                           \
+    if (a->magic != TENSOR_MAGIC) {                                                             \
+        RETURN_ON_ERROR(TENSOR_ERR_UNINITIALIZED, "Tensor not initialized");                    \
+    }                                                                                           \
+    for (size_t i = 0; i < a->size; ++i) {                                                      \
+        a->data[i] = value;                                                                     \
+    }                                                                                           \
+    return TENSOR_SUCCESS;                                                                      \
+}
+
 #define DEFINE_TENSOR_ELEMWISE_OP(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, AXPY_FUNC, OP, FAC)        \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b, const DATA_TYPE alpha) {       \
     if (!a || !b || !a->data || !b->data) {                                                     \
@@ -512,6 +526,7 @@ DEFINE_TENSOR_CREATE(tensorf64_create, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_COPY(tensorf64_copy, TensorF64, double, tensorf64_prepare) 
 DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
+DEFINE_TENSOR_FILL(tensorf64_fill, TensorF64, double)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_add, TensorF64, double, cblas_daxpy, +=, 1.0)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_sub, TensorF64, double, cblas_daxpy, -=, -1.0)
 DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dgemm)

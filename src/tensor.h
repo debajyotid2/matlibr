@@ -21,6 +21,7 @@ TensorStatusCode tensorf64_create(TensorF64 *t, int ndim, const unsigned int *sh
 TensorStatusCode tensorf64_copy(TensorF64 *dest, const TensorF64 *src);
 TensorStatusCode tensorf64_reshape(TensorF64 *t, int new_ndim, const unsigned int *new_shape);
 TensorStatusCode tensorf64_set_data(TensorF64 *t, const double *src, size_t count);
+TensorStatusCode tensorf64_fill(TensorF64 *t, const double value);
 TensorStatusCode tensorf64_add(TensorF64 *a, const TensorF64 *b, const double alpha);
 TensorStatusCode tensorf64_sub(TensorF64 *a, const TensorF64 *b, const double alpha);
 TensorStatusCode tensorf64_mul(const TensorF64 *a, bool trans_a, const TensorF64 *b, bool trans_b,

@@ -2,8 +2,8 @@
 #include "tensor.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <math.h>
 #include <float.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -452,6 +452,49 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     tensorf64_destroy(&b);
     tensorf64_destroy(&out);
     tensorf64_destroy(&expected);
+}
+
+TEST_CASE("TensorF64: Fill", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    const unsigned int shape[] = {2, 3, 4};
+    const double       tol = 1.0e-9;
+    tensorf64_create(&t, 3, shape);
+
+    SECTION("Fill with non-zero floating-point value") {
+        REQUIRE(tensorf64_fill(&t, 3.25) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE_THAT(t.data[i], Catch::Matchers::WithinAbs(3.25, tol));
+        }
+    }
+
+    SECTION("Overwrite existing data with negative value and zero") {
+        REQUIRE(tensorf64_fill(&t, -7.75) == TENSOR_SUCCESS);
+        REQUIRE_THAT(TENSOR_AT(&t, 1, 2, 3), Catch::Matchers::WithinAbs(-7.75, tol));
+
+        REQUIRE(tensorf64_fill(&t, 0.0) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] == 0.0);
+        }
+    }
+
+    SECTION("Fill permuted view") {
+        TensorF64          view = TENSOR_INIT;
+        const unsigned int perm[] = {2, 0, 1};
+        tensorf64_permute(&t, &view, perm);
+
+        REQUIRE(tensorf64_fill(&view, 4.5) == TENSOR_SUCCESS);
+        REQUIRE_THAT(TENSOR_AT(&view, 3, 1, 2), Catch::Matchers::WithinAbs(4.5, tol));
+        REQUIRE_THAT(TENSOR_AT(&t, 1, 2, 3), Catch::Matchers::WithinAbs(4.5, tol));
+        tensorf64_destroy(&view);
+    }
+
+    SECTION("Null tensors") {
+        TensorF64 uninit = TENSOR_INIT;
+        REQUIRE(tensorf64_fill(NULL, 1.0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_fill(&uninit, 1.0) == TENSOR_ERR_NULL_PTR);
+    }
+
+    tensorf64_destroy(&t);
 }
 
 TEST_CASE("TensorF64: Fill Random Uniform", "[tensorf64]") {
