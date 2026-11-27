@@ -314,6 +314,7 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
     const double       data_a[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     const double       data_b[8] = {8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0};
     double             tol = 1.0e-9;
+    double             alpha = 1.0;
 
     tensorf64_create(&a, 3, shape);
     tensorf64_create(&b, 3, shape);
@@ -324,14 +325,14 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
     SECTION("Addition") {
         const double exp_data[8] = {9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0};
         tensorf64_set_data(&expected, exp_data, 8);
-        REQUIRE(tensorf64_add(&a, &b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_add(&a, &b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
     }
 
     SECTION("Subtraction") {
         const double exp_data[8] = {-7.0, -5.0, -3.0, -1.0, 1.0, 3.0, 5.0, 7.0};
         tensorf64_set_data(&expected, exp_data, 8);
-        REQUIRE(tensorf64_sub(&a, &b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_sub(&a, &b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
     }
 
@@ -339,16 +340,16 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
         TensorF64          wrong = TENSOR_INIT;
         const unsigned int wrong_shape[] = {2, 4};
         tensorf64_create(&wrong, 2, wrong_shape);
-        REQUIRE(tensorf64_add(&a, &wrong) == TENSOR_ERR_DIMENSION_MISMATCH);
-        REQUIRE(tensorf64_sub(&a, &wrong) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_add(&a, &wrong, alpha) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_sub(&a, &wrong, alpha) == TENSOR_ERR_DIMENSION_MISMATCH);
         tensorf64_destroy(&wrong);
     }
 
     SECTION("Add and Sub null pointers") {
-        REQUIRE(tensorf64_add(NULL, &b) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_add(&a, NULL) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_sub(NULL, &b) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_sub(&a, NULL) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_add(NULL, &b, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_add(&a, NULL, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_sub(NULL, &b, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_sub(&a, NULL, alpha) == TENSOR_ERR_NULL_PTR);
     }
 
     SECTION("Add and Sub with permuted views") {
@@ -360,9 +361,9 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
         tensorf64_permute(&b, &perm_b, perm_dims);
         tensorf64_set_data(&expected, exp_add, 8);
 
-        REQUIRE(tensorf64_add(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_add(&perm_a, &perm_b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
-        REQUIRE(tensorf64_sub(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_sub(&perm_a, &perm_b, alpha) == TENSOR_SUCCESS);
         for (size_t i = 0; i < 8; ++i)
             REQUIRE_THAT(a.data[i], Catch::Matchers::WithinAbs(data_a[i], tol));
 

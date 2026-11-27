@@ -13,6 +13,7 @@ TEST_CASE("TensorF64 Performance", "[tensorf64][benchmark]") {
         {4, 1024, 1024}
     };
     const char *labels[] = {"4x32x32", "4x256x256", "4x1024x1024"};
+    const double alpha = 1.0;
 
     for (size_t idx = 0; idx < 3; ++idx) {
         TensorF64 a = TENSOR_INIT;
@@ -27,11 +28,11 @@ TEST_CASE("TensorF64 Performance", "[tensorf64][benchmark]") {
         }
 
         BENCHMARK(std::string("TensorF64 (BLAS) Add [") + labels[idx] + "]") {
-            return tensorf64_add(&a, &b);
+            return tensorf64_add(&a, &b, alpha);
         };
 
         BENCHMARK(std::string("TensorF64 (BLAS) Sub [") + labels[idx] + "]") {
-            return tensorf64_sub(&a, &b);
+            return tensorf64_sub(&a, &b, alpha);
         };
 
         BENCHMARK(std::string("TensorF64 (BLAS) Mul [") + labels[idx] + "]") {
@@ -58,6 +59,8 @@ TEST_CASE("TensorF64 Strided View Performance", "[tensorf64][strided][benchmark]
     TensorF64 perm_b = TENSOR_INIT;
     TensorF64 trans_a = TENSOR_INIT;
     TensorF64 copy_dst = TENSOR_INIT;
+    
+    const double alpha = 1.0;
 
     tensorf64_create(&a, 3, shape);
     tensorf64_create(&b, 3, shape);
@@ -81,7 +84,7 @@ TEST_CASE("TensorF64 Strided View Performance", "[tensorf64][strided][benchmark]
     };
 
     BENCHMARK("TensorF64 Strided Add [256x8x256]") {
-        return tensorf64_add(&perm_a, &perm_b);
+        return tensorf64_add(&perm_a, &perm_b, alpha);
     };
 
     BENCHMARK("TensorF64 Strided Batched Mul (Transposed View) [8x256x256]") {
