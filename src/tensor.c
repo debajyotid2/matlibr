@@ -110,7 +110,7 @@ static TensorStatusCode FUNC_NAME(TENSOR_TYPE* t, size_t ndim, const unsigned in
             RETURN_ON_ERROR(TENSOR_ERR_MEMORY_ALLOCATION, "Allocation failed.");              \
         }                                                                                     \
         t->ndim = (size_t)ndim;                                                               \
-        memset(t->shape, (unsigned int)0, TENSOR_MAX_DIMS);                                   \
+        memset(t->shape, (unsigned int)0, TENSOR_MAX_DIMS * sizeof(unsigned int));            \
         memcpy(t->shape, shape, ndim * sizeof(unsigned int));                                 \
         tensor_set_strides(t->shape, t->ndim, t->strides);                                    \
         t->size = size;                                                                       \
@@ -155,7 +155,7 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *t, int ndim, const unsigned int *shape) 
 
 #define DEFINE_TENSOR_COPY(FUNC_NAME, TENSOR_TYPE, DATA_TYPE, PREPARE_FUNC)             \
 TensorStatusCode FUNC_NAME(TENSOR_TYPE *dest, const TENSOR_TYPE *src) {                 \
-    if (dest==NULL || !src || !src->data) {                                             \             
+    if (dest==NULL || !src || !src->data) {                                             \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Null pointer received.");                 \
     }                                                                                   \
     if (src->magic != TENSOR_MAGIC) {                                                   \
@@ -264,10 +264,10 @@ TensorStatusCode FUNC_NAME(TENSOR_TYPE *a, const TENSOR_TYPE *b) {              
 }
 
 #define DEFINE_TENSOR_MUL(FUNC_NAME, TENSOR_TYPE, DATA_TYPE,                                                      \
-                           PREPARE_FUNC, GEMM_FUNC, ALPHA, BETA)                                                  \
+                           PREPARE_FUNC, GEMM_FUNC)                                                               \
 TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                                                    \
                            const TENSOR_TYPE *b, bool trans_b,                                                    \
-                               TENSOR_TYPE *out) {                                                                \
+                           TENSOR_TYPE *out, const DATA_TYPE alpha, const DATA_TYPE beta) {                       \
     if (a==NULL || b==NULL || out==NULL || !a->data || !b->data) {                                                \
         RETURN_ON_ERROR(TENSOR_ERR_NULL_PTR, "Got null pointer.");                                                \
     }                                                                                                             \
@@ -306,8 +306,6 @@ TensorStatusCode FUNC_NAME(const TENSOR_TYPE *a, bool trans_a,                  
             "Tensor dimensions must satisfy k = k' for multiplying "                                              \
             "(..., m, k) and (..., k', n) matrices.");                                                            \
     }                                                                                                             \
-                                                                                                                  \
-    DATA_TYPE alpha = ALPHA, beta = BETA;                                                                         \
                                                                                                                   \
     size_t a_row_stride = a->strides[a->ndim - 2];                                                                \
     size_t a_col_stride = a->strides[a->ndim - 1];                                                                \
@@ -494,7 +492,7 @@ DEFINE_TENSOR_RESHAPE(tensorf64_reshape, TensorF64)
 DEFINE_TENSOR_SET_DATA(tensorf64_set_data, TensorF64, double)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_add, TensorF64, double, cblas_daxpy, +=, 1.0)
 DEFINE_TENSOR_ELEMWISE_OP(tensorf64_sub, TensorF64, double, cblas_daxpy, -=, -1.0)
-DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dgemm, 1.0, 0.0)
+DEFINE_TENSOR_MUL(tensorf64_mul, TensorF64, double, tensorf64_prepare, cblas_dgemm)
 DEFINE_TENSOR_PERMUTE(tensorf64_permute, TensorF64)
 DEFINE_TENSOR_GATHER(tensorf64_gather, TensorF64, double, tensorf64_prepare)
 DEFINE_TENSOR_DESTROY(tensorf64_destroy, TensorF64)

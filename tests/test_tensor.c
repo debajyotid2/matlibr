@@ -384,6 +384,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     const double       data_b[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 2.0, 0.0, 0.0, 2.0, 1.0, 1.0};
     const double       exp_data[8] = {22.0, 28.0, 49.0, 64.0, 23.0, 25.0, 32.0, 34.0};
     double             tol = 1.0e-9;
+    double             alpha = 1.0, beta = 0.0;
 
     tensorf64_create(&b, 3, shape_b);
     tensorf64_set_data(&b, data_b, 12);
@@ -397,7 +398,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_create(&a, 3, shape_a);
         tensorf64_set_data(&a, data_a, 12);
 
-        REQUIRE(tensorf64_mul(&a, false, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a, false, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
         tensorf64_destroy(&a);
     }
@@ -408,7 +409,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_create(&a_t, 3, shape_b);
         tensorf64_set_data(&a_t, data_at, 12);
 
-        REQUIRE(tensorf64_mul(&a_t, true, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a_t, true, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
         tensorf64_destroy(&a_t);
     }
@@ -417,15 +418,17 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         TensorF64          bad_batch = TENSOR_INIT;
         const unsigned int bad_shape[] = {3, 2, 3};
         tensorf64_create(&bad_batch, 3, bad_shape);
-        REQUIRE(tensorf64_mul(&bad_batch, false, &b, false, &out) == TENSOR_ERR_DIMENSION_MISMATCH);
-        REQUIRE(tensorf64_mul(&b, false, &b, false, &out) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_mul(&bad_batch, false, &b, false, &out, alpha, beta) ==
+                TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_mul(&b, false, &b, false, &out, alpha, beta) ==
+                TENSOR_ERR_DIMENSION_MISMATCH);
         tensorf64_destroy(&bad_batch);
     }
 
     SECTION("In-place and null pointer errors") {
-        REQUIRE(tensorf64_mul(&b, true, &b, false, &b) == TENSOR_ERR_INPLACE_MATMUL);
-        REQUIRE(tensorf64_mul(NULL, false, &b, false, &out) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_mul(&b, false, &b, false, NULL) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_mul(&b, true, &b, false, &b, alpha, beta) == TENSOR_ERR_INPLACE_MATMUL);
+        REQUIRE(tensorf64_mul(NULL, false, &b, false, &out, alpha, beta) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_mul(&b, false, &b, false, NULL, alpha, beta) == TENSOR_ERR_NULL_PTR);
     }
 
     SECTION("Batched multiplication with permuted view") {
@@ -437,7 +440,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_set_data(&a_src, data_at, 12);
         tensorf64_permute(&a_src, &a_perm, perm_dims);
 
-        REQUIRE(tensorf64_mul(&a_perm, false, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a_perm, false, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
 
         tensorf64_destroy(&a_perm);

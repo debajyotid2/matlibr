@@ -35,7 +35,7 @@ TEST_CASE("TensorF64 Performance", "[tensorf64][benchmark]") {
         };
 
         BENCHMARK(std::string("TensorF64 (BLAS) Mul [") + labels[idx] + "]") {
-            return tensorf64_mul(&a, false, &b, false, &r);
+            return tensorf64_mul(&a, false, &b, false, &r, 1.0, 0.0);
         };
 
         tensorf64_destroy(&a);
@@ -85,7 +85,7 @@ TEST_CASE("TensorF64 Strided View Performance", "[tensorf64][strided][benchmark]
     };
 
     BENCHMARK("TensorF64 Strided Batched Mul (Transposed View) [8x256x256]") {
-        return tensorf64_mul(&trans_a, false, &b, false, &out);
+        return tensorf64_mul(&trans_a, false, &b, false, &out, 1.0, 0.0);
     };
 
     tensorf64_destroy(&perm_a);
