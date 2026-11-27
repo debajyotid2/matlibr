@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27.2)
 
-project(matlibr)
+project(matlibr LANGUAGES C CXX)
 
 set(CMAKE_C_COMPILER g++)
 

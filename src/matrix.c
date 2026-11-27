@@ -600,7 +600,7 @@ DEFINE_MATRIX_SUB(mati64_sub, MatrixI64, i64_axpy)
 DEFINE_MATRIX_VEC_ADD(mati64_vec_add, MatrixI64, i64_axpy, int64_t, mati64_add_scalar)
 DEFINE_MATRIX_VEC_SUB(mati64_vec_sub, MatrixI64, i64_axpy, int64_t, mati64_add_scalar)
 DEFINE_MATRIX_MUL(mati64_mul, MatrixI64, int64_t, i64_gemm, mati64_prepare)
-DEFINE_MATRIX_GATHER(mati64_gather, MatrixI64, MatrixI64, i64_copy)
+DEFINE_MATRIX_GATHER(mati64_gather, MatrixI64, MatrixI32, i64_copy)
 DEFINE_MATRIX_DESTROY(mati64_destroy, MatrixI64)
 
 // Fill a matrix with random integers between low and high (exclusive)

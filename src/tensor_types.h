@@ -1,11 +1,16 @@
 #ifndef TENSOR_TYPES_H
 #define TENSOR_TYPES_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "matrix_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define TENSOR_MAX_DIMS 8
 #define TENSOR_INIT {0}
@@ -68,9 +73,9 @@ static inline size_t _tensor_offset(const void *data, size_t ndim, unsigned int 
     }
     size_t offset = 0;
     for (int i = 0; (size_t)i < ndim; ++i) {
-        int dim = coords[i];
+        int64_t dim = coords[i];
         if (dim < 0 || (size_t)dim >= shape[i]) {
-            fprintf(stderr, "TENSOR LIB ERROR: %s,%d: Index %d out of bounds.\n", func, line, dim);
+            fprintf(stderr, "TENSOR LIB ERROR: %s,%d: Index %ld out of bounds.\n", func, line, dim);
             abort();
         }
         offset += (size_t)dim * strides[i];
@@ -87,4 +92,7 @@ static inline size_t _tensor_offset(const void *data, size_t ndim, unsigned int 
         sizeof((const size_t[]){__VA_ARGS__}) / sizeof(size_t), (const size_t[]){__VA_ARGS__},  \
         __func__, __LINE__)])
 
+#ifdef __cplusplus
+}
+#endif
 #endif // TENSOR_TYPES_H

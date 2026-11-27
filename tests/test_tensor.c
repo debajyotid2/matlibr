@@ -2,6 +2,7 @@
 #include "tensor.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -89,7 +90,7 @@ TEST_CASE("TensorF64: Copy and Reshape", "[tensorf64]") {
         REQUIRE(tensorf64_copy(&copy, &t) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&t, &copy, tol));
         REQUIRE(t.data != copy.data);
-        REQUIRE(tensorf64_copy(&t, &t) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_copy(&t, &t) == TENSOR_ERR_VIEW_TENSOR_OVERWRITE);
         tensorf64_destroy(&copy);
     }
 
@@ -314,6 +315,7 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
     const double       data_a[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     const double       data_b[8] = {8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0};
     double             tol = 1.0e-9;
+    double             alpha = 1.0;
 
     tensorf64_create(&a, 3, shape);
     tensorf64_create(&b, 3, shape);
@@ -324,14 +326,14 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
     SECTION("Addition") {
         const double exp_data[8] = {9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0};
         tensorf64_set_data(&expected, exp_data, 8);
-        REQUIRE(tensorf64_add(&a, &b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_add(&a, &b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
     }
 
     SECTION("Subtraction") {
         const double exp_data[8] = {-7.0, -5.0, -3.0, -1.0, 1.0, 3.0, 5.0, 7.0};
         tensorf64_set_data(&expected, exp_data, 8);
-        REQUIRE(tensorf64_sub(&a, &b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_sub(&a, &b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
     }
 
@@ -339,16 +341,16 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
         TensorF64          wrong = TENSOR_INIT;
         const unsigned int wrong_shape[] = {2, 4};
         tensorf64_create(&wrong, 2, wrong_shape);
-        REQUIRE(tensorf64_add(&a, &wrong) == TENSOR_ERR_DIMENSION_MISMATCH);
-        REQUIRE(tensorf64_sub(&a, &wrong) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_add(&a, &wrong, alpha) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_sub(&a, &wrong, alpha) == TENSOR_ERR_DIMENSION_MISMATCH);
         tensorf64_destroy(&wrong);
     }
 
     SECTION("Add and Sub null pointers") {
-        REQUIRE(tensorf64_add(NULL, &b) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_add(&a, NULL) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_sub(NULL, &b) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_sub(&a, NULL) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_add(NULL, &b, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_add(&a, NULL, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_sub(NULL, &b, alpha) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_sub(&a, NULL, alpha) == TENSOR_ERR_NULL_PTR);
     }
 
     SECTION("Add and Sub with permuted views") {
@@ -360,9 +362,9 @@ TEST_CASE("TensorF64: Elementwise Add and Sub", "[tensorf64]") {
         tensorf64_permute(&b, &perm_b, perm_dims);
         tensorf64_set_data(&expected, exp_add, 8);
 
-        REQUIRE(tensorf64_add(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_add(&perm_a, &perm_b, alpha) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&a, &expected, tol));
-        REQUIRE(tensorf64_sub(&perm_a, &perm_b) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_sub(&perm_a, &perm_b, alpha) == TENSOR_SUCCESS);
         for (size_t i = 0; i < 8; ++i)
             REQUIRE_THAT(a.data[i], Catch::Matchers::WithinAbs(data_a[i], tol));
 
@@ -384,6 +386,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     const double       data_b[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 2.0, 0.0, 0.0, 2.0, 1.0, 1.0};
     const double       exp_data[8] = {22.0, 28.0, 49.0, 64.0, 23.0, 25.0, 32.0, 34.0};
     double             tol = 1.0e-9;
+    double             alpha = 1.0, beta = 0.0;
 
     tensorf64_create(&b, 3, shape_b);
     tensorf64_set_data(&b, data_b, 12);
@@ -397,7 +400,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_create(&a, 3, shape_a);
         tensorf64_set_data(&a, data_a, 12);
 
-        REQUIRE(tensorf64_mul(&a, false, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a, false, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
         tensorf64_destroy(&a);
     }
@@ -408,7 +411,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_create(&a_t, 3, shape_b);
         tensorf64_set_data(&a_t, data_at, 12);
 
-        REQUIRE(tensorf64_mul(&a_t, true, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a_t, true, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
         tensorf64_destroy(&a_t);
     }
@@ -417,15 +420,17 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         TensorF64          bad_batch = TENSOR_INIT;
         const unsigned int bad_shape[] = {3, 2, 3};
         tensorf64_create(&bad_batch, 3, bad_shape);
-        REQUIRE(tensorf64_mul(&bad_batch, false, &b, false, &out) == TENSOR_ERR_DIMENSION_MISMATCH);
-        REQUIRE(tensorf64_mul(&b, false, &b, false, &out) == TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_mul(&bad_batch, false, &b, false, &out, alpha, beta) ==
+                TENSOR_ERR_DIMENSION_MISMATCH);
+        REQUIRE(tensorf64_mul(&b, false, &b, false, &out, alpha, beta) ==
+                TENSOR_ERR_DIMENSION_MISMATCH);
         tensorf64_destroy(&bad_batch);
     }
 
     SECTION("In-place and null pointer errors") {
-        REQUIRE(tensorf64_mul(&b, true, &b, false, &b) == TENSOR_ERR_INPLACE_MATMUL);
-        REQUIRE(tensorf64_mul(NULL, false, &b, false, &out) == TENSOR_ERR_NULL_PTR);
-        REQUIRE(tensorf64_mul(&b, false, &b, false, NULL) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_mul(&b, true, &b, false, &b, alpha, beta) == TENSOR_ERR_INPLACE_MATMUL);
+        REQUIRE(tensorf64_mul(NULL, false, &b, false, &out, alpha, beta) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_mul(&b, false, &b, false, NULL, alpha, beta) == TENSOR_ERR_NULL_PTR);
     }
 
     SECTION("Batched multiplication with permuted view") {
@@ -437,7 +442,7 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
         tensorf64_set_data(&a_src, data_at, 12);
         tensorf64_permute(&a_src, &a_perm, perm_dims);
 
-        REQUIRE(tensorf64_mul(&a_perm, false, &b, false, &out) == TENSOR_SUCCESS);
+        REQUIRE(tensorf64_mul(&a_perm, false, &b, false, &out, alpha, beta) == TENSOR_SUCCESS);
         REQUIRE(are_f64_tensors_equal(&out, &expected, tol));
 
         tensorf64_destroy(&a_perm);
@@ -447,4 +452,91 @@ TEST_CASE("TensorF64: Batched Multiplication", "[tensorf64]") {
     tensorf64_destroy(&b);
     tensorf64_destroy(&out);
     tensorf64_destroy(&expected);
+}
+
+TEST_CASE("TensorF64: Fill", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    const unsigned int shape[] = {2, 3, 4};
+    const double       tol = 1.0e-9;
+    tensorf64_create(&t, 3, shape);
+
+    SECTION("Fill with non-zero floating-point value") {
+        REQUIRE(tensorf64_fill(&t, 3.25) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE_THAT(t.data[i], Catch::Matchers::WithinAbs(3.25, tol));
+        }
+    }
+
+    SECTION("Overwrite existing data with negative value and zero") {
+        REQUIRE(tensorf64_fill(&t, -7.75) == TENSOR_SUCCESS);
+        REQUIRE_THAT(TENSOR_AT(&t, 1, 2, 3), Catch::Matchers::WithinAbs(-7.75, tol));
+
+        REQUIRE(tensorf64_fill(&t, 0.0) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] == 0.0);
+        }
+    }
+
+    SECTION("Fill permuted view") {
+        TensorF64          view = TENSOR_INIT;
+        const unsigned int perm[] = {2, 0, 1};
+        tensorf64_permute(&t, &view, perm);
+
+        REQUIRE(tensorf64_fill(&view, 4.5) == TENSOR_SUCCESS);
+        REQUIRE_THAT(TENSOR_AT(&view, 3, 1, 2), Catch::Matchers::WithinAbs(4.5, tol));
+        REQUIRE_THAT(TENSOR_AT(&t, 1, 2, 3), Catch::Matchers::WithinAbs(4.5, tol));
+        tensorf64_destroy(&view);
+    }
+
+    SECTION("Null tensors") {
+        TensorF64 uninit = TENSOR_INIT;
+        REQUIRE(tensorf64_fill(NULL, 1.0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_fill(&uninit, 1.0) == TENSOR_ERR_NULL_PTR);
+    }
+
+    tensorf64_destroy(&t);
+}
+
+TEST_CASE("TensorF64: Fill Random Uniform", "[tensorf64]") {
+    TensorF64          t = TENSOR_INIT;
+    const unsigned int shape[] = {2, 3, 4};
+    tensorf64_create(&t, 3, shape);
+
+    SECTION("Valid uniform range") {
+        const double low = -5.0;
+        const double high = 10.0;
+        REQUIRE(tensorf64_fill_random_uniform(&t, low, high) == TENSOR_SUCCESS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] >= low);
+            REQUIRE(t.data[i] < high);
+        }
+    }
+
+    SECTION("Invalid ranges") {
+        REQUIRE(tensorf64_fill_random_uniform(&t, 5.0, 5.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, 10.0, 5.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, NAN, 1.0) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, 0.0, INFINITY) == TENSOR_ERR_RANGE_INVALID);
+        REQUIRE(tensorf64_fill_random_uniform(&t, -DBL_MAX, DBL_MAX) == TENSOR_ERR_RANGE_INVALID);
+    }
+
+    SECTION("Null tensors") {
+        TensorF64 uninit = TENSOR_INIT;
+        REQUIRE(tensorf64_fill_random_uniform(NULL, 0.0, 1.0) == TENSOR_ERR_NULL_PTR);
+        REQUIRE(tensorf64_fill_random_uniform(&uninit, 0.0, 1.0) == TENSOR_ERR_NULL_PTR);
+    }
+
+    SECTION("Non-contiguous view rejected") {
+        TensorF64          view = TENSOR_INIT;
+        const unsigned int perm[] = {2, 0, 1};
+        tensorf64_permute(&t, &view, perm);
+
+        REQUIRE(tensorf64_fill_random_uniform(&view, 1.0, 2.0) == TENSOR_ERR_NON_CONTIGUOUS);
+        for (size_t i = 0; i < t.size; ++i) {
+            REQUIRE(t.data[i] == 0.0);
+        }
+        tensorf64_destroy(&view);
+    }
+
+    tensorf64_destroy(&t);
 }

@@ -11,6 +11,7 @@ target_include_directories(${PROJECT_LIBRARY_NAME} PUBLIC
 target_link_libraries(${PROJECT_LIBRARY_NAME} PUBLIC m dl ${OPENBLAS_LIBRARIES})
 
 target_compile_options(${PROJECT_LIBRARY_NAME} PRIVATE
-    $<$<C_COMPILER_ID:GNU,CLang>:-O3 -march=native -Wall -Wextra -pedantic -Wno-missing-field-initializers>
+    $<$<C_COMPILER_ID:GNU,CLang>:-O3 -march=native -Wall 
+                -Wextra -pedantic -Wno-missing-field-initializers -Wno-unused-parameter>
     $<$<C_COMPILER_ID:MSVC>:/W4 /permissive->
 )
